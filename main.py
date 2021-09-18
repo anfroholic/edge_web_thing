@@ -1,52 +1,49 @@
 
 
-import usocket as socket
+# import usocket as socket
 import utime
 from machine import Pin
 import network
-import urequests as requests
+# import urequests as requests
 from neopixel import NeoPixel
 import esp
 esp.osdebug(None)
-import uasyncio
+import uasyncio as asyncio
 
 import gc
 gc.collect()
 
 ssid = 'Grammys_IoT'
 password = 'AAGI96475'
-
+port = 80
+loop = asyncio.get_event_loop()
 
 station = network.WLAN(network.STA_IF)
 
 station.active(True)
 station.connect(ssid, password)
 
-while not sta_if.isconnected():
+while not station.isconnected():
     print(".", end = "")
+    utime.sleep_ms(250)
 
 print('Connection successful')
 print(station.ifconfig())
-
+my_ip = station.ifconfig()[0]
 
 # set up pins
 hbt_led = Pin(5, Pin.OUT)
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
 func_button = Pin(36, Pin.IN) # Has external pullup
-json_loaded = 'None'
+
 
 
 
 
 def web_page():
-  global json_loaded
-  if hbt_led.value() == 1:
-      gpio_state="Active"
-  else:
-      gpio_state="Disconnected"
-
-
+  gpio_state = 'some gpio state'
+  json_loaded = 'some json'
   html = """
 <html>
     <head>
@@ -67,42 +64,32 @@ def web_page():
     </body></html>"""
   return html
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 80))
-s.listen(5)
-
-def handle_socket():
-    conn, addr = s.accept()
-    print('Got a connection from %s' % str(addr))
-    request = conn.recv(1024)
-    request = str(request)
-    # print('Content = %s' % request)
-    led_on = request.find('/?led=on')
-    led_off = request.find('/?led=off')
-    load_json = request.find('/?load_json')
-
-    if led_on == 6:
-        print('LED ON')
-        neo_status[0] = (0, 33, 0)
-        neo_status.write()
-    if led_off == 6:
-        print('LED OFF')
-        neo_status[0] = (0, 0, 0)
-        neo_status.write()
-    if load_json == 6:
-        print('load json')
-        json_loaded = 'Would be nice if this were built'
-    response = web_page()
-    conn.send('HTTP/1.1 200 OK\n')
-    conn.send('Content-Type: text/html\n')
-    conn.send('Connection: close\n\n')
-    conn.sendall(response)
-    conn.close()
+async def time_check():
+        # do the time check etc here
+        print('Bar started: waiting {}secs')
+        await asyncio.sleep(.1)
 
 
-while True:
-    if not func_button.value():
-        print('function button pressed')
-        utime.sleep(250)
-    handle_socket()
-    chk_hbt()
+async def handle_client(reader, writer):
+    request = (await reader.read(1024)).decode('utf8')
+    print(request)
+    await writer.awrite(
+        b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
+    # with open(web_page(), 'rb') as response:
+    #     while True:
+    #         buf = response.read(1024)
+    #         if len(buf):
+    #             await writer.awrite(buf)
+    #         if len(buf) < 1024:
+    #             break
+    await writer.awrite(web_page())
+    await writer.aclose()
+    return True
+
+loop.create_task(asyncio.start_server(handle_client, my_ip, port))
+# asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
+
+# loop.create_task(time_check())
+asyncio.run(time_check())
+print('Time check and async webserver created, listening on {}:{}'.format(my_ip, port))
+loop.run_forever()
