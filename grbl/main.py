@@ -108,10 +108,18 @@ def web_page():
     <input type="text" id="a" name="a"><br><br>
     <input type="submit" value="Submit">
     </form>
+
     <p><strong>file</strong></p>
     <form action="/file.php">
     <label for="file">file:</label>
     <input type="text" id="file" name="file"><br><br>
+    <input type="submit" value="Submit">
+    </form>
+
+    <p><strong>direct</strong></p>
+    <form action="/direct.php">
+    <label for="direct">direct:</label>
+    <input type="text" id="direct" name="direct"><br><br>
     <input type="submit" value="Submit">
     </form>
     </body></html>"""
@@ -129,7 +137,10 @@ class GRBL:
         self.file_blurb = ''
         self.blurb_index = 0
         self.blurb = ''
+        self.j_blurb = {}
         self.f = None
+        self.queue = {}
+        self.modal = ['move.linear', 'move.rapid']
 
     def parse_move(self, request):
         end = request.find(' HTTP')
@@ -175,6 +186,7 @@ class GRBL:
     def handler(self, line):
         """
         handler for incomming uart comms from grbl
+        this also will send blurbs to grbl when running file from sd card
         """
         print(line)
         if line == 'ok':
@@ -184,6 +196,8 @@ class GRBL:
             print('update machine info')
             seg = line.split('|')
             grbl.state = seg[0][1:]
+        elif line == '[MSG:Evezor]':
+            print('got evezor message')
         else:
             # print('maybe need some other command thing')
             pass
@@ -192,17 +206,38 @@ class GRBL:
         """
         gets next line from sd card file
         """
+        if self.queue:
+            # if a message is in queue it probably means it's a can bus message.
+            # a dwell has been sent in it's place last round and now it should send
+            print('message in queue')
+            print(convert(**self.queue))
+            self.queue = {}
+
         if len(self.file_blurb) < 200:
             self.file_blurb += self.f.read(100)
+
         self.blurb_index = self.file_blurb.find('\r')
         if len(self.file_blurb) > 0:
             if self.blurb_index > 0:
                 self.blurb = self.file_blurb[0:self.blurb_index]
                 self.file_blurb = self.file_blurb[(self.blurb_index + 2):]
-                print(self.blurb)
+                self.j_blurb = json.loads(self.blurb)
+                # print(self.j_blurb)
+                self.parse_message(self.j_blurb)
 
     def file_opener(self, name):
         self.f = open(name, 'r')
+
+    def parse_message(self, msg):
+        # print('parser')
+        if msg['command'] in self.modal:
+            print('modal command')
+            self.send(convert(**msg))
+        else:
+            # we need to wait until grbl is finished working on modal commands and returns [MSG:Evezor]
+            print('pausing')
+            self.queue = msg
+            self.send('G4 P.01')
 
 
 
@@ -294,8 +329,15 @@ async def handle_client(reader, writer):
         fn = action.split('=')
         name = '/sd/' + fn[1]
         grbl.file_opener(name)
+    elif action.find('/direct') == 0:
+        fn = action.split('=')
+        action = fn[1].replace('+', ' ')
+        print('sending direct ' + action)
+        action = action + '\n'
+        uart1.write(action)
 
     elif action == '/?get_line':
+        print('getting next')
         grbl.get_next()
     else:
         print('unknown command')

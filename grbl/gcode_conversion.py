@@ -27,6 +27,8 @@ def convert(**kwargs):
     :return:
     """
     line = None
+    # print('converting')
+    # print(kwargs)
     if kwargs['command'] in the_conversions.keys():
         command = kwargs['command']
         # print(command)
