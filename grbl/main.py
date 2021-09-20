@@ -1,20 +1,19 @@
 
-
-
+import esp
+esp.osdebug(None)
+import gc
+gc.collect()
 from gcode_conversion import *  #asyncio does not seem to be able to make outside calls from within handle_client
-
-
+import json
+import uos
 import utime
 from machine import Pin, UART, CAN
 import machine
 import network
 from neopixel import NeoPixel
-import esp
-esp.osdebug(None)
+
 import uasyncio as asyncio
 
-import gc
-gc.collect()
 
 ssid = 'Grammys_IoT'
 password = 'AAGI96475'
@@ -27,6 +26,7 @@ hbt_led = Pin(5, Pin.OUT)
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
 func_button = Pin(36, Pin.IN) # Has external pullup
+# sd_detect = Pin(10, Pin.IN, Pin.PULL_DOWN)
 
 print('GRBL board test')
 print('V1.5')
@@ -47,6 +47,17 @@ my_ip = station.ifconfig()[0]
 neo_status[0] = (0, 10, 0)
 neo_status.write()
 utime.sleep_ms(250)
+neo_status[0] = (0, 0, 10)
+neo_status.write()
+utime.sleep(.25)
+
+
+
+
+# uos.mount(sd, "/sd")
+# print('sd contents:')
+# print(uos.listdir('/sd'))
+# utime.sleep(.25)
 neo_status[0] = (0, 0, 0)
 neo_status.write()
 
@@ -55,7 +66,7 @@ uart1 = UART(1, baudrate=115200, tx=22, rx=23)
 
 
 def web_page():
-  connect_state = 'fix connection'
+
 
   html = """
 <html>
@@ -66,16 +77,22 @@ def web_page():
         <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
   h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}.button{display: inline-block; background-color: #e7bd3b; border: none;
   border-radius: 4px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
-  .button2{background-color: #4286f4;}.button3{background-color: #06876f;}</style>
+  .button2{background-color: #4286f4;}.button3{background-color: #06876f;}.button4{background-color: #E1341E;}</style>
     </head>
     <body>
     <h1>Evezor Web Interface</h1>
-    <p>Connection State: <strong>""" + connect_state + """</strong></p>
+    <p>Connection State: <strong>""" + grbl.connection_state + """</strong></p>
+    <p>State: <strong>""" + grbl.state + """</strong></p>
 
-    <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a></p>
+    <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a><a href="/?connect"><button class="button button2">connect</button></a></p>
 
     <p><a href="/?get_state"><button class="button button3">get_state</button></a><a href="/?unlock"><button class="button button3">unlock</button></a>
-    <a href="/?SLP"><button class="button button3">sleep</button></a><a href="/?wake"><button class="button button3">wake up</button></a></p>
+    <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
+
+    <p><a href="/?homex"><button class="button button2">homex</button></a><a href="/?homey"><button class="button button2">homey</button></a>
+    <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a></p>
+
+    <p><a href="/?mount_sd"><button class="button button3">mount sd</button></a><a href="/?nuke"><button class="button button4">NUKE</button></a><a href="/?get_line"><button class="button button3">get_line</button></a></p>
 
     <br><br>
     <p><strong>Move Machine</strong></p>
@@ -91,34 +108,102 @@ def web_page():
     <input type="text" id="a" name="a"><br><br>
     <input type="submit" value="Submit">
     </form>
-    <p><strong>$stuff</strong></p>
-    <form action="/else.php">
-    <label for="cmd">$:</label>
-    <input type="text" id="cmd" name="cmd"><br><br>
-    <label for="val">=:</label>
-    <input type="text" id="val" name="val"><br><br>
+    <p><strong>file</strong></p>
+    <form action="/file.php">
+    <label for="file">file:</label>
+    <input type="text" id="file" name="file"><br><br>
     <input type="submit" value="Submit">
     </form>
     </body></html>"""
   return html
 
-def parse_move(request):
-    end = request.find(' HTTP')
-    action = request[14:end]
-    action += '&'
-    # print('parsing request')
-    # print(action)
-    axes = ['x', 'y', 'z', 'a']
-    parsed = {}
-    for axis in axes:
-        index = action.find('&')
-        if action[2: index] != '':
-            parsed[axis] = action[2: index]
-        action = action[(index + 1):]
-    # print(parsed)
-    parsed['command'] = 'move.linear'
-    parsed['feed'] = 2000
-    return parsed
+class GRBL:
+    def __init__(self):
+        self.connection_state = 'not connected'
+        self.to_parse = ''
+        self.index = 0
+        self.line = ''
+        self.is_running = False
+        self.state = ''
+        self.sd_state = 'unmounted'
+        self.file_blurb = ''
+        self.blurb_index = 0
+        self.blurb = ''
+        self.f = None
+
+    def parse_move(self, request):
+        end = request.find(' HTTP')
+        action = request[14:end]
+        action += '&'
+        # print('parsing request')
+        # print(action)
+        axes = ['x', 'y', 'z', 'a']
+        parsed = {}
+        for axis in axes:
+            index = action.find('&')
+            if action[2: index] != '':
+                parsed[axis] = action[2: index]
+            action = action[(index + 1):]
+        # print(parsed)
+        parsed['command'] = 'move.linear'
+        parsed['feed'] = 2000
+        return parsed
+
+    def send(self, message):
+        if self.connection_state == 'connected':
+            uart1.write(message + '\n')
+        else:
+            print(message)
+
+    def get_line(self):
+        """
+        find line in text from grbl over uart
+        """
+        if self.to_parse != '':
+            # print('trying to parse')
+            self.index = self.to_parse.find('\r')
+            # print(self.to_parse)
+            # print(self.index)
+            if len(self.to_parse) > 0: # check for empty line
+                if self.index > 0:
+                    self.line = self.to_parse[0:self.index]
+                    self.to_parse = self.to_parse[(self.index + 2):]
+                else:
+                    self.to_parse = self.to_parse[2:]
+                self.handler(self.line)
+
+    def handler(self, line):
+        """
+        handler for incomming uart comms from grbl
+        """
+        print(line)
+        if line == 'ok':
+            if self.is_running:
+                print('todo: finish handler')
+        elif line[0] == '<':
+            print('update machine info')
+            seg = line.split('|')
+            grbl.state = seg[0][1:]
+        else:
+            # print('maybe need some other command thing')
+            pass
+
+    def get_next(self):
+        """
+        gets next line from sd card file
+        """
+        if len(self.file_blurb) < 200:
+            self.file_blurb += self.f.read(100)
+        self.blurb_index = self.file_blurb.find('\r')
+        if len(self.file_blurb) > 0:
+            if self.blurb_index > 0:
+                self.blurb = self.file_blurb[0:self.blurb_index]
+                self.file_blurb = self.file_blurb[(self.blurb_index + 2):]
+                print(self.blurb)
+
+    def file_opener(self, name):
+        self.f = open(name, 'r')
+
 
 
 async def buttons():
@@ -136,38 +221,84 @@ async def do_hbt():
         await asyncio.sleep(.9)
 
 async def handle_uart():
-    mess = ''
     while True:
-        mess_len = uart1.any()
-        if mess_len > 0:
-            new = uart1.read(mess_len).decode('ascii')
-            print(new)
-        await asyncio.sleep_ms(1)
+        if uart1.any():
+            grbl.to_parse += uart1.read(uart1.any()).decode('ascii')
+            # print(grbl.to_parse)
+        await asyncio.sleep_ms(5)
+
+async def parse_grbl():
+    while True:
+        grbl.get_line()
+        await asyncio.sleep_ms(5)
 
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
-    print(request[:50])
-
+    # print(request)
+    end = request.find(' HTTP')
+    action = request[4:end]
+    print(action)
     # process request
-    if request.find('/move') == 4:
+    if action.find('/move') == 4:
         parsed = parse_move(request)
-        # print(parsed)
         print(convert(**parsed))
 
-    if request.find('/?led=on') == 4:
+    elif action == '/?led=on':
         print('turn led on')
         neo_status[0] = (0, 25, 0)
         neo_status.write()
-    if request.find('/?led=off') == 4:
+    elif action == '/?led=off':
         print('turn led off')
         neo_status[0] = (0, 0, 0)
         neo_status.write()
-    if request.find('/?get_state') == 4:
-        print('getting state')
-        uart1.write('?\n')
-    if request.find('/?unlock') == 4:
+    elif action == '/?connect':
+        print('connecting')
+        grbl.connection_state = 'connected'
+    elif action == '/?get_state':
+        # print('getting state')
+        uart1.write('?')
+    elif action == '/?unlock':
         print('unlocking')
-        # uart1.write('?\n')
+        uart1.write('$X\n')
+    elif action == '/?sleep':
+        print('putting to sleep')
+        uart1.write('$SLP\n')
+    elif action == '/?wake_up':
+        print('waking up grbl')
+        uart1.write(b'\x18')
+        uart1.write('\n')
+    elif action == '/?homex':
+        print('homing x')
+        uart1.write('$HX\n')
+    elif action == '/?homey':
+        print('homing y')
+        uart1.write('$HY\n')
+    elif action == '/?homexy':
+        print('homing xy')
+        uart1.write('$HXY\n')
+    elif action == '/?homez':
+        print('homing z')
+        uart1.write('$HZ\n')
+    elif action == '/?mount_sd':
+        sd = machine.SDCard(slot=3)
+        print('mounting sd')
+        uos.mount(sd, "/sd")
+        print('sd contents:')
+        print(uos.listdir('/sd'))
+    elif action == '/?nuke':
+        print('nuking board')
+        uos.remove('main.py')
+        machine.reset()
+    elif action.find('/file') == 0:
+        print('opening file')
+        fn = action.split('=')
+        name = '/sd/' + fn[1]
+        grbl.file_opener(name)
+
+    elif action == '/?get_line':
+        grbl.get_next()
+    else:
+        print('unknown command')
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
@@ -188,9 +319,10 @@ async def main():
     asyncio.create_task(do_hbt())
     asyncio.create_task(buttons())
     asyncio.create_task(handle_uart())
+    asyncio.create_task(parse_grbl())
     while True:
         await asyncio.sleep(5)
 
-
+grbl = GRBL()
 while True:
     asyncio.run(main())
