@@ -14,6 +14,10 @@ from neopixel import NeoPixel
 
 import uasyncio as asyncio
 
+print(machine.freq())
+machine.freq(240000000)
+print(machine.freq())
+
 
 ssid = 'Grammys_IoT'
 password = 'AAGI96475'
@@ -83,8 +87,11 @@ def web_page():
     <h1>Evezor Web Interface</h1>
     <p>Connection State: <strong>""" + grbl.connection_state + """</strong></p>
     <p>State: <strong>""" + grbl.state + """</strong></p>
+    <p>Running: <strong>""" + grbl.is_running + """</strong></p>
 
-    <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a><a href="/?connect"><button class="button button2">connect</button></a></p>
+
+    <p><a href="/?led=off"><button class="button button2">neo off</button></a><a href="/?led=on"><button class="button">neo on</button></a>
+    <a href="/?connect"><button class="button button2">connect</button></a><a href="/?run"><button class="button button2">run</button></a></p>
 
     <p><a href="/?get_state"><button class="button button3">get_state</button></a><a href="/?unlock"><button class="button button3">unlock</button></a>
     <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
@@ -128,21 +135,25 @@ def web_page():
 class GRBL:
     def __init__(self):
         self.connection_state = 'not connected'
+        self.is_running = 'False'
+
         self.to_parse = ''
         self.index = 0
         self.line = ''
-        self.is_running = False
         self.state = ''
         self.sd_state = 'unmounted'
         self.file_blurb = ''
+
         self.blurb_index = 0
-        self.blurb = ''
         self.j_blurb = {}
         self.f = None
         self.queue = {}
         self.modal = ['move.linear', 'move.rapid']
 
     def parse_move(self, request):
+        """
+        parse move that came from web socket
+        """
         end = request.find(' HTTP')
         action = request[14:end]
         action += '&'
@@ -161,6 +172,9 @@ class GRBL:
         return parsed
 
     def send(self, message):
+        """
+        send message to grbl board
+        """
         if self.connection_state == 'connected':
             uart1.write(message + '\n')
         else:
@@ -188,19 +202,21 @@ class GRBL:
         handler for incomming uart comms from grbl
         this also will send blurbs to grbl when running file from sd card
         """
-        print(line)
+        # print(line)
         if line == 'ok':
-            if self.is_running:
-                print('todo: finish handler')
+            if self.is_running == 'True':
+                # print('todo: finish handler')
+                self.get_next()
         elif line[0] == '<':
             print('update machine info')
+            print(line)
             seg = line.split('|')
             grbl.state = seg[0][1:]
         elif line == '[MSG:Evezor]':
             print('got evezor message')
         else:
+            print(line)
             # print('maybe need some other command thing')
-            pass
 
     def get_next(self):
         """
@@ -219,29 +235,42 @@ class GRBL:
         self.blurb_index = self.file_blurb.find('\r')
         if len(self.file_blurb) > 0:
             if self.blurb_index > 0:
-                self.blurb = self.file_blurb[0:self.blurb_index]
+                self.j_blurb = json.loads(self.file_blurb[0:self.blurb_index])
                 self.file_blurb = self.file_blurb[(self.blurb_index + 2):]
-                self.j_blurb = json.loads(self.blurb)
+                # self.j_blurb = json.loads(self.blurb)
                 # print(self.j_blurb)
                 self.parse_message(self.j_blurb)
+        else:
+            print('must be the end of the file, maybe consider stop running')
+            if self.queue:
+                print('oops, guess there was one more command')
+                self.get_next()
+            else:
+                self.is_running = 'False'
+                print('closing file')
+                self.f.close()
 
     def file_opener(self, name):
+        # TODO: make it so it doesn't break if file does not exist
         self.f = open(name, 'r')
 
     def parse_message(self, msg):
+        """
+        send message to converter or handle canbus requests
+        """
         # print('parser')
         if msg['command'] in self.modal:
-            print('modal command')
+            # print('modal command')
             self.send(convert(**msg))
         else:
             # we need to wait until grbl is finished working on modal commands and returns [MSG:Evezor]
-            print('pausing')
+            # print('pausing')
             self.queue = msg
             self.send('G4 P.01')
 
 
 
-async def buttons():
+async def ck_buttons():
     while True:
         if not func_button.value():
             print('function button pressed')
@@ -289,6 +318,9 @@ async def handle_client(reader, writer):
     elif action == '/?connect':
         print('connecting')
         grbl.connection_state = 'connected'
+    elif action == '/?run':
+        print('run')
+        grbl.is_running = 'True'
     elif action == '/?get_state':
         # print('getting state')
         uart1.write('?')
@@ -359,7 +391,7 @@ async def handle_client(reader, writer):
 async def main():
     asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
     asyncio.create_task(do_hbt())
-    asyncio.create_task(buttons())
+    asyncio.create_task(ck_buttons())
     asyncio.create_task(handle_uart())
     asyncio.create_task(parse_grbl())
     while True:
