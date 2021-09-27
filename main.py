@@ -16,10 +16,12 @@ import uasyncio as asyncio
 import gc
 gc.collect()
 
-ssid = 'Grammys_IoT'
-password = 'AAGI96475'
+
 port = 80
-loop = asyncio.get_event_loop()
+
+networks = {'Grammys_IoT':'AAGI96475', 'Hermanns': 'Storage8', 'PumpingStationOne': 'ps1frocks'}
+
+
 
 
 # set up pins
@@ -28,21 +30,35 @@ neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
 func_button = Pin(36, Pin.IN) # Has external pullup
 
-
-#network
-station = network.WLAN(network.STA_IF)
-station.active(True)
-station.connect(ssid, password)
-
 neo_status[0] = (10, 0, 0)
 neo_status.write()
-while not station.isconnected():
+#network
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+
+aps = wlan.scan()
+
+neo_status[0] = (0, 10, 0)
+neo_status.write()
+
+for i in range(len(aps)):
+    station = aps[i][0].decode('ascii')
+    if station in networks:
+        print('connecting to ' + station + ', '+ networks[station])
+        wlan.connect(station, networks[station])
+
+
+neo_status[0] = (0, 0, 10)
+neo_status.write()
+
+while not wlan.isconnected():
     print(".", end = "")
     utime.sleep_ms(250)
 
 print('Connection successful')
-print(station.ifconfig())
-my_ip = station.ifconfig()[0]
+print(wlan.ifconfig())
+
+my_ip = wlan.ifconfig()[0]
 neo_status[0] = (0, 10, 0)
 neo_status.write()
 utime.sleep_ms(250)
@@ -88,23 +104,6 @@ def web_page():
     </body></html>"""
   return html
 
-def parse_move(request):
-    end = request.find(' HTTP')
-    action = request[14:end]
-    action += '&'
-    # print('parsing request')
-    # print(action)
-    axes = ['x', 'y', 'z', 'a']
-    parsed = {}
-    for axis in axes:
-        index = action.find('&')
-        if action[2: index] != '':
-            parsed[axis] = action[2: index]
-        action = action[(index + 1):]
-    # print(parsed)
-    parsed['command'] = 'move.linear'
-    parsed['feed'] = 2000
-    return parsed
 
 
 async def buttons():
