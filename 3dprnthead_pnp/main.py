@@ -43,8 +43,8 @@ fan = Pin(23, Pin.OUT, value=0)
 uart1 = UART(1, baudrate=115200, stop=1, parity=None, bits=8, tx=32, rx=35)
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
 
-c_buf = bytearray(8)
-c_mess = [0, 0, 0, memoryview(c_buf)]
+buf = bytearray(8)
+mess = [0, 0, 0, memoryview(buf)]
 
 # Set up hbt timer
 hbt_state = 0
@@ -97,28 +97,34 @@ def ring_light(state):
     neo_ring.write()
 
 def get():
-    can.recv(c_mess)
-    print(str(c_mess[0]) + ', ' + str(c_buf[0]))
-    if c_mess[0] == 1:
-        if c_buf[0] == 0:
-            light_show()
-        elif c_buf[0] == 1:
-            machine.reset()
-    elif c_mess[0] == 3:  # 3 is id for this board
-        if c_buf[0] == 0:
-            heater.value(0)
-        elif c_buf[0] == 1:
-            heater.value(1)
+    can.recv(mess)
+    print(str(mess[0]) + ', ' + str(buf[0]))
+    if mess[0] <= 10:  #this is a message for all boards
+        if mess[0] == 1:
+            if buf[0] == 0:
+                light_show()
+            elif buf[0] == 1:
+                machine.reset()
+    elif mess[0] >= 30 and mess[0] <= 39:  # 30 is id for this board
+        if mess[0] == 30:
+            neo_status[0] = (buf[0], buf[1], buf[2])
+            neo_status.write()
 
-        elif c_buf[0] >= 2 and c_buf[0] <= 17:
-            feed = str(c_buf[0])
-            print(feed)
-            feed_feeder(feed)
+        elif mess[0] == 39:
+            if buf[0] == 0:
+                heater.value(0)
+            elif buf[0] == 1:
+                heater.value(1)
 
-        elif c_buf[0] == 18:
-            print('make neo light on function')
-        elif c_buf[0] == 19:
-            print('make neo light off function')
+            elif buf[0] >= 2 and buf[0] <= 17:
+                feed = str(buf[0])
+                print(feed)
+                feed_feeder(feed)
+
+            elif buf[0] == 18:
+                print('make neo light on function')
+            elif buf[0] == 19:
+                print('make neo light off function')
     else:
         print('unknown command')
 

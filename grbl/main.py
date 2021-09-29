@@ -307,9 +307,12 @@ async def parse_grbl():
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
     # print(request)
+
+    # find the action
     end = request.find(' HTTP')
     action = request[4:end]
     print(action)
+
     # process request
     if action.find('/move') == 4:
         parsed = parse_move(request)
