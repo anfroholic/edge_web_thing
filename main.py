@@ -19,7 +19,7 @@ gc.collect()
 
 port = 80
 
-networks = {'Grammys_IoT':'AAGI96475', 'Hermanns': 'Storage8', 'PumpingStationOne': 'ps1frocks'}
+networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 
 

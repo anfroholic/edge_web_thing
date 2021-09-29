@@ -18,7 +18,7 @@ print(machine.freq())
 machine.freq(240000000)
 print(machine.freq())
 
-
+networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 port = 80
 
 
@@ -38,7 +38,7 @@ wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 
 aps = wlan.scan()
-
+print(aps)
 neo_status[0] = (0, 10, 0)
 neo_status.write()
 
