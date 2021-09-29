@@ -18,6 +18,10 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
 
+
+neo_ring_pin = Pin(33, Pin.OUT)
+neo_ring = NeoPixel(neo_ring_pin, 12)
+
 # Set up rest
 
 #probe = Pin(35, Pin.IN)
@@ -81,6 +85,16 @@ def light_show():
 
 def feed_feeder(feeder):
     uart1.write(feeder)
+
+
+def ring_light(state):
+    if state:
+        for i in range(12):
+            neo_ring[i] = (50, 50, 50)
+    else:
+        for i in range(12):
+            neo_ring[i] = (0,0,0)
+    neo_ring.write()
 
 def get():
     can.recv(c_mess)
