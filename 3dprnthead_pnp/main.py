@@ -8,6 +8,7 @@ import machine
 print('3d printhead board PNP version')
 print('v1.00')
 print('initializing')
+this_id = 300
 
 # Set up standard components
 machine.freq(240000000)
@@ -87,44 +88,43 @@ def feed_feeder(feeder):
     uart1.write(feeder)
 
 
-def ring_light(state):
-    if state:
-        for i in range(12):
-            neo_ring[i] = (50, 50, 50)
-    else:
-        for i in range(12):
-            neo_ring[i] = (0,0,0)
+def ring_light(buf):
+    for i in range(12):
+        neo_ring[i] = (buf[0],buf[1],buf[2])
     neo_ring.write()
 
 def get():
     can.recv(mess)
     print(str(mess[0]) + ', ' + str(buf[0]))
-    if mess[0] <= 10:  #this is a message for all boards
+
+    # these are messages for all boards
+    if mess[0] <= 100:
         if mess[0] == 1:
-            if buf[0] == 0:
-                light_show()
-            elif buf[0] == 1:
-                machine.reset()
-    elif mess[0] >= 30 and mess[0] <= 39:  # 30 is id for this board
-        if mess[0] == 30:
+            light_show()
+        elif mess[0] == 2:
+            machine.reset()
+        elif mess[0] == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
 
-        elif mess[0] == 39:
-            if buf[0] == 0:
-                heater.value(0)
-            elif buf[0] == 1:
-                heater.value(1)
+    elif mess[0] >= this_id and mess[0] <= (this_id+99):
+        this_arb = mess[0] - this_id
+        if this_arb == 1:
+            light_show()
+        elif this_arb == 2:
+            machine.reset()
+        elif this_arb == 3:
+            neo_status[0] = (buf[0], buf[1], buf[2])
+            neo_status.write()
 
-            elif buf[0] >= 2 and buf[0] <= 17:
-                feed = str(buf[0])
-                print(feed)
-                feed_feeder(feed)
+        elif this_arb == 99:
+            heater.value(buf[0])
 
-            elif buf[0] == 18:
-                print('make neo light on function')
-            elif buf[0] == 19:
-                print('make neo light off function')
+        elif this_arb == 98:
+            feed_feeder(buf[0])
+        elif this_arb == 97:
+            ring_light(buf)
+            
     else:
         print('unknown command')
 

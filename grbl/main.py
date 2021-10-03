@@ -156,7 +156,7 @@ class GRBL:
         self.j_blurb = {}
         self.f = None
         self.queue = {}
-        self.modal = ['move.linear', 'move.rapid']
+        self.modal = ['move.linear', 'move.rapid', 'sleep']
 
     def parse_move(self, request):
         """
