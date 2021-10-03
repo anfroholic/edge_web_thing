@@ -81,6 +81,9 @@ def light_show():
     neo_status[0] = (0, 0, 0)
     neo_status.write()
 
+def move_servo(servo, pos):
+    servo.duty(pos)
+
 def get():
     can.recv(mess)
     print(str(mess[0]) + ', ' + str(buf[0]))
@@ -107,6 +110,8 @@ def get():
         elif this_arb in servo_can_id:
             print('move_servo')
             print(servo_can_id.index(this_arb))
+            move_servo(servo_can_id.index(this_arb), buf[0]) 
+            
 
     else:
         print('unknown command')
