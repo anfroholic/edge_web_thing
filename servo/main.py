@@ -19,6 +19,8 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
 
+can_slp = Pin(2, Pin.OUT, value=0)
+can_slp.value(0)
 
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
 
@@ -95,14 +97,6 @@ while True:
     if(can.any()):
         get()
 
-    if uart1.any():
-        print(uart1.readline())
-
     if not func_button.value():
         print('function button pressed')
-        therm = thermister.read()
-        utime.sleep_ms(10)
-        analog = analog_1.read()
-        print('thermister val: ' + str(therm))
-        print('analog_1 val: ' + str(analog))
         light_show()
