@@ -38,9 +38,24 @@ next_hbt = utime.ticks_add(start, hbt_interval)
 hbt_led.value(hbt_state)
 
 
+
 # Set up peripherals
+a_button_state = 1
+a_button_id = 0
+b_button_state = 1
+b_button_can_id = 1
 a_button = Pin(22, Pin.IN, Pin.PULL_UP)
 b_button = Pin(23, Pin.IN, Pin.PULL_UP)
+
+
+# some_analog_prev = None
+# some_analog_state = None
+# some_analog_can_id = 9999  # this id is counting from 50 for broadcasts
+# some_analog = ADC(Pin(9999))
+# some_analog.atten(ADC.ATTN_11DB)
+# some_analog.width(ADC.WIDTH_12BIT)
+
+
 
 # Mistake!!! Servo 7 and 9 are not usable! Also Servo 12, we are OUT of PWM channels. There are a max of
 servo_label = ['servo_1', 'servo_2', 'servo_3', 'servo_4', 'servo_6', 'servo_8', 'servo_10', 'servo_12']
@@ -84,6 +99,16 @@ def light_show():
 def move_servo(servo, pos):
     servo.duty(pos)
 
+def move_all_servos(pos):
+    for servo in servo_label:
+            move_servo(servo, pos)
+
+def truth_fairy(state):
+    s = False
+    if state == 1:
+        s = True
+    return s
+
 def get():
     can.recv(mess)
     print(str(mess[0]) + ', ' + str(buf[0]))
@@ -107,11 +132,11 @@ def get():
         elif this_arb == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
+
         elif this_arb in servo_can_id:
             print('move_servo')
             print(servo_can_id.index(this_arb))
-            move_servo(servo_can_id.index(this_arb), buf[0]) 
-            
+            move_servo(servo_can_id.index(this_arb), buf[0])
 
     else:
         print('unknown command')
@@ -128,20 +153,22 @@ while True:
         if broadcast_state:
             neo_status[0] = (0, 33, 0)
             neo_status.write()
-            utime.sleep_ms(750)
-            neo_status[0] = (0, 0, 0)
-            neo_status.write()
         else:
             neo_status[0] = (0, 33, 0)
             neo_status.write()
-            utime.sleep_ms(750)
-            neo_status[0] = (0, 0, 0)
-            neo_status.write()
 
-    if not a_button.value():
-        print('a button pressed')
-        can.send([1], self_broadcast)
+    if a_button.value() != a_button_state:
+        a_button_state = a_button.value()
+        arb = self_broadcast + a_button_can_id
+        can.send([a_state], arb)
 
-    if not b_button.value():
-        print('b button pressed')
-        can.send([0], self_broadcast)
+    if b_button.value() != b_button_state:
+        b_button_state = b_button.value()
+        arb = self_broadcast + b_button_can_id
+        can.send([b_state], arb)
+
+    # analog reads
+    # if abs(some_analog_sate - some_analog.read()) > 3:
+    #     some_analog_prev = some_analog_state
+    # if broadcast_state:
+    #     can.send([some_analog_state], some_analog_can_id)
