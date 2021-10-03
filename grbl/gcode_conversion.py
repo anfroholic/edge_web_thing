@@ -1,12 +1,12 @@
 the_conversions = {
     'move.linear': 'G1',
     'move.rapid': 'G0',
-    'suck.on': None,
-    'suck.off': None,
-    'feed.feeder': None,
+    'sleep': 'G4',
+    'suction': 399,
+    'feed.feeder': 398,
+    'ring_light': 397,
     'spindle.on': None,
     'spindle.off': None
-
 }
 
 axes = {
@@ -39,21 +39,18 @@ def convert(**kwargs):
                     val = kwargs[axis]
 
                     val = round(float(val), 3)
-                    blurb = '{}{} '.format(axes[axis],val)
+                    blurb = '{}{} '.format(axes[axis], val)
                     line += blurb
             if 'feed' in kwargs:
                 blurb = "F{}".format(kwargs['feed'])
                 line += blurb
 
-        elif command == 'feed.feeder':
-            line = "feeding the feeder {}".format(kwargs['id'])
+        elif command == 'sleep':
+            line = '{} {}'.format(the_conversions[command], kwargs['val'])
 
-        elif command == 'suck.on':
-            line = 'turn on suction'
-
-        elif command == 'suck.off':
-            line = 'turn off suction'
-
+        else:
+            line = 'can message: {} arb: {} val: {}'.format(command, the_conversions[command], kwargs['val'])
+            # can.send(kwargs['val'], the_conversions[command])
     else:
         print('WARNING: UNKNOWN COMMAND in gcode_conversion')
         print(kwargs)
