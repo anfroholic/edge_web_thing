@@ -5,7 +5,7 @@ from gcode_conversion import *  #asyncio does not seem to be able to make outsid
 
 
 import utime
-from machine import Pin
+from machine import Pin, CAN, ADC
 import machine
 import network
 from neopixel import NeoPixel
@@ -22,7 +22,7 @@ port = 80
 networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
+can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
