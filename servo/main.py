@@ -21,11 +21,13 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
 
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
+can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
