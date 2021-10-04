@@ -93,7 +93,12 @@ def web_page():
 
     <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a></p>
 
-    <p><a href="/?load_json"><button class="button button3">unused</button></a></p>
+    <p>
+    <a href="/?reset"><button class="button button3">reset</button></a>
+    <a href="/?light_show"><button class="button button3">light show</button></a>
+    <a href="/?broadcast"><button class="button button3">broadcast</button></a>
+    <a href="/?!broadcast"><button class="button button3">!broadcast</button></a>
+    </p>
     <br><br>
     <p><strong>Send CAN Message</strong></p>
 
@@ -176,20 +181,30 @@ def send_can(request):
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
     # print(request)
-
+    end = request.find(' HTTP')
+    action = request[4:end]
+    print(action)
     # process request
     if request.find('/can') == 4:
         send_can(request)
 
 
-    if request.find('/?led=on') == 4:
+    elif action == '/?led=on':
         print('turn led on')
         neo_status[0] = (0, 25, 0)
         neo_status.write()
-    if request.find('/?led=off') == 4:
+    elif action == '/?led=off':
         print('turn led off')
         neo_status[0] = (0, 0, 0)
         neo_status.write()
+    elif action == '/?reset':
+        can.send([1], 2)
+    elif action == '/?light_show':
+        can.send([1], 1)
+    elif action == '/?broadcast':
+        can.send([1], 4)
+    elif action == '/?!broadcast':
+        can.send([0], 4)
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
