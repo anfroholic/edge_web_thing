@@ -41,10 +41,11 @@ hbt_led.value(hbt_state)
 
 # Set up peripherals
 a_button_state = 1
-a_button_id = 0
+a_button_can_id = 0 # id + self_broadcast
+a_button = Pin(22, Pin.IN, Pin.PULL_UP)
+
 b_button_state = 1
 b_button_can_id = 1
-a_button = Pin(22, Pin.IN, Pin.PULL_UP)
 b_button = Pin(23, Pin.IN, Pin.PULL_UP)
 
 
@@ -103,11 +104,16 @@ def move_all_servos(pos):
     for servo in servo_label:
             move_servo(servo, pos)
 
-def truth_fairy(state):
-    s = False
-    if state == 1:
-        s = True
-    return s
+def reverse(state):
+    if state = 0:
+        state = 1
+    else:
+        state = 0
+    return state
+
+def send(arb, msg, broadcast_state):
+    if broadcast_state:
+        can.send(msg, arb)
 
 def get():
     can.recv(mess)
@@ -160,12 +166,14 @@ while True:
     if a_button.value() != a_button_state:
         a_button_state = a_button.value()
         arb = self_broadcast + a_button_can_id
-        can.send([a_state], arb)
+        print('a_button state: ' + a_button_state)
+        if broadcast_state:
+        send(arb, [reverse(a_state)])
 
     if b_button.value() != b_button_state:
         b_button_state = b_button.value()
         arb = self_broadcast + b_button_can_id
-        can.send([b_state], arb)
+        send(arb, [reverse(b_state)])
 
     # analog reads
     # if abs(some_analog_sate - some_analog.read()) > 3:
