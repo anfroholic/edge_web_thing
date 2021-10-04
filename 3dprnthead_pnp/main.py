@@ -5,10 +5,13 @@ from neopixel import NeoPixel
 import utime
 import machine
 
-print('3d printhead board PNP version')
-print('v1.00')
+print('3d printhead board')
+print('v1.00p')
 print('initializing')
 this_id = 300
+print(this_id)
+broadcast_state = False
+self_broadcast = this_id + 50
 
 # Set up standard components
 machine.freq(240000000)
@@ -18,6 +21,11 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
+
+can_slp = Pin(2, Pin.OUT, value=0)
+can_slp.value(0)
 
 
 neo_ring_pin = Pin(33, Pin.OUT)
@@ -93,6 +101,26 @@ def ring_light(buf):
         neo_ring[i] = (buf[0],buf[1],buf[2])
     neo_ring.write()
 
+def broadcast(state):
+    if state:
+        neo_status[0] = (0, 10, 0)
+        neo_status.write()
+    else:
+        neo_status[0] = (0, 0, 0)
+        neo_status.write()
+
+def reverse(state):
+    if state == 0:
+        state = 1
+    else:
+        state = 0
+    return state
+
+def send(arb, msg):
+    global broadcast_state
+    if broadcast_state:
+        can.send(msg, arb)
+
 def get():
     can.recv(mess)
     print(str(mess[0]) + ', ' + str(buf[0]))
@@ -116,6 +144,10 @@ def get():
         elif this_arb == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
+        elif mess[0] == 4:
+            global broadcast_state
+            broadcast_state = buf[0]
+            broadcast(broadcast_state)
 
         elif this_arb == 99:
             heater.value(buf[0])
@@ -124,7 +156,7 @@ def get():
             feed_feeder(buf[0])
         elif this_arb == 97:
             ring_light(buf)
-            
+
     else:
         print('unknown command')
 
@@ -139,12 +171,10 @@ while True:
 
     if not func_button.value():
         print('function button pressed')
-        therm = thermister.read()
-        utime.sleep_ms(10)
-        analog = analog_1.read()
-        print('thermister val: ' + str(therm))
-        print('analog_1 val: ' + str(analog))
-        light_show()
+        broadcast_state = not broadcast_state
+        broadcast(broadcast_state)
+        utime.sleep_ms(200)
+
     # if probe.value():
     #     print('probe triggered')
     #     utime.sleep_ms(250)

@@ -174,6 +174,10 @@ def get():
         elif this_arb == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
+        elif mess[0] == 4:
+            global broadcast_state
+            broadcast_state = buf[0]
+            broadcast(broadcast_state)
 
         elif this_arb == 90:
             led_0.value(buf[0])
