@@ -21,11 +21,13 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
 
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
+can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
@@ -47,15 +49,6 @@ a_button = Pin(22, Pin.IN, Pin.PULL_UP)
 b_button_state = 1
 b_button_can_id = 1
 b_button = Pin(23, Pin.IN, Pin.PULL_UP)
-
-
-# some_analog_prev = None
-# some_analog_state = None
-# some_analog_can_id = 9999  # this id is counting from 50 for broadcasts
-# some_analog = ADC(Pin(9999))
-# some_analog.atten(ADC.ATTN_11DB)
-# some_analog.width(ADC.WIDTH_12BIT)
-
 
 
 # Mistake!!! Servo 7 and 9 are not usable! Also Servo 12, we are OUT of PWM channels. There are a max of
@@ -98,26 +91,37 @@ def light_show():
     neo_status.write()
 
 def move_servo(servo, pos):
-    servo.duty(pos)
+    mapped = round((pos * .433) + 20)
+    # servo.duty(mapped)
+    print(mapped)
 
 def move_all_servos(pos):
     for servo in servo_label:
             move_servo(servo, pos)
 
+def broadcast(state):
+    if state:
+        neo_status[0] = (0, 10, 0)
+        neo_status.write()
+    else:
+        neo_status[0] = (0, 0, 0)
+        neo_status.write()
+
 def reverse(state):
-    if state = 0:
+    if state == 0:
         state = 1
     else:
         state = 0
     return state
 
-def send(arb, msg, broadcast_state):
+def send(arb, msg):
+    global broadcast_state
     if broadcast_state:
         can.send(msg, arb)
 
 def get():
     can.recv(mess)
-    print(str(mess[0]) + ', ' + str(buf[0]))
+    # print(str(mess[0]) + ', ' + str(buf[0]))
 
     # these are messages for all boards
     if mess[0] <= 100:
@@ -128,6 +132,11 @@ def get():
         elif mess[0] == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
+        elif mess[0] == 4:
+            global broadcast_state
+            broadcast_state = buf[0]
+            broadcast(broadcast_state)
+
     # messages to self
     elif mess[0] >= this_id and mess[0] <= (this_id+99):
         this_arb = mess[0] - this_id
@@ -139,13 +148,25 @@ def get():
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
 
+
         elif this_arb in servo_can_id:
             print('move_servo')
             print(servo_can_id.index(this_arb))
             move_servo(servo_can_id.index(this_arb), buf[0])
 
-    else:
-        print('unknown command')
+        elif this_arb == 99:
+            move_all_servos(buf[0])
+
+    # # dpad pot_a
+    # elif mess[0] == 557:
+    #     move_servo('servo_1', buf[0])
+    # # dpad pot_b
+    # elif mess[0] == 558:
+    #     move_servo('servo_2', buf[0])
+
+
+    # else:
+    #     print('unknown command')
 
 while True:
     chk_hbt()
@@ -155,28 +176,18 @@ while True:
 
     if not func_button.value():
         print('function button pressed')
-        broadcast_state != broadcast_state
-        if broadcast_state:
-            neo_status[0] = (0, 33, 0)
-            neo_status.write()
-        else:
-            neo_status[0] = (0, 33, 0)
-            neo_status.write()
+        broadcast_state = not broadcast_state
+        broadcast(broadcast_state)
+        utime.sleep_ms(200)
 
     if a_button.value() != a_button_state:
         a_button_state = a_button.value()
         arb = self_broadcast + a_button_can_id
-        print('a_button state: ' + a_button_state)
-        if broadcast_state:
-        send(arb, [reverse(a_state)])
+        print('a_button state: ' + str(a_button_state))
+        send(arb, [reverse(a_button_state)])
 
     if b_button.value() != b_button_state:
         b_button_state = b_button.value()
         arb = self_broadcast + b_button_can_id
-        send(arb, [reverse(b_state)])
-
-    # analog reads
-    # if abs(some_analog_sate - some_analog.read()) > 3:
-    #     some_analog_prev = some_analog_state
-    # if broadcast_state:
-    #     can.send([some_analog_state], some_analog_can_id)
+        print('b_button state: ' + str(b_button_state))
+        send(arb, [reverse(b_button_state)])

@@ -126,6 +126,13 @@ def light_show():
     neo_status[0] = (0, 0, 0)
     neo_status.write()
 
+def broadcast(state):
+    if state:
+        neo_status[0] = (0, 10, 0)
+        neo_status.write()
+    else:
+        neo_status[0] = (0, 0, 0)
+        neo_status.write()
 
 def reverse(state):
     if state == 0:
@@ -141,7 +148,7 @@ def send(arb, msg):
 
 def get():
     can.recv(mess)
-    print(str(mess[0]) + ', ' + str(buf[0]))
+    # print(str(mess[0]) + ', ' + str(buf[0]))
 
     # these are messages for all boards
     if mess[0] <= 100:
@@ -152,6 +159,11 @@ def get():
         elif mess[0] == 3:
             neo_status[0] = (buf[0], buf[1], buf[2])
             neo_status.write()
+        elif mess[0] == 4:
+            global broadcast_state
+            broadcast_state = buf[0]
+            broadcast(broadcast_state)
+
     # messages to self
     elif mess[0] >= this_id and mess[0] <= (this_id+99):
         this_arb = mess[0] - this_id
@@ -172,9 +184,8 @@ def get():
         elif this_arb == 93:
             led_3.value(buf[0])
 
-
-    else:
-        print('unknown command')
+    # else:
+    #     print('unknown command')
 
 while True:
     chk_hbt()
@@ -185,13 +196,7 @@ while True:
     if not func_button.value():
         print('function button pressed')
         broadcast_state = not broadcast_state
-        print(broadcast_state)
-        if broadcast_state:
-            neo_status[0] = (0, 10, 0)
-            neo_status.write()
-        else:
-            neo_status[0] = (0, 0, 0)
-            neo_status.write()
+        broadcast(broadcast_state)
         utime.sleep_ms(200)
 
     if a_button.value() != a_button_state:
@@ -236,13 +241,13 @@ while True:
         print('push state: ' + str(push_state))
         send(arb, [reverse(push_state)])
 
-    pot_a_state = round(pot_a.read()/16)
+    pot_a_state = int(round(pot_a.read())/16)
     if abs(pot_a_prev - pot_a_state) > 1:
         # print(pot_a_state)
         pot_a_prev = pot_a_state
         send(pot_a_can_id + self_broadcast, [pot_a_state])
 
-    pot_b_state = round(pot_b.read()/16)
+    pot_b_state = int(round(pot_b.read())/16)
     if abs(pot_b_prev - pot_b_state) > 1:
         # print(pot_b_state)
         pot_b_prev = pot_b_state
