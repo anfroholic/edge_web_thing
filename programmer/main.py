@@ -22,7 +22,10 @@ port = 80
 networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 
+can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
 
+buf = bytearray(8)
+mess = [0, 0, 0, memoryview(buf)]
 
 # set up pins
 hbt_led = Pin(5, Pin.OUT)
@@ -32,6 +35,10 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 
 neo_status[0] = (10, 0, 0)
 neo_status.write()
+
+can_slp = Pin(2, Pin.OUT, value=0)
+can_slp.value(0)
+
 #network
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
@@ -88,23 +95,50 @@ def web_page():
 
     <p><a href="/?load_json"><button class="button button3">unused</button></a></p>
     <br><br>
-    <p><strong>Move Machine</strong></p>
+    <p><strong>Send CAN Message</strong></p>
 
-    <form action="/move.php">
-    <label for="send_x">X:</label>
-    <input type="text" id="x" name="x"><br><br>
-    <label for="send_y">Y:</label>
-    <input type="text" id="y" name="y"><br><br>
-    <label for="send_z">Z:</label>
-    <input type="text" id="z" name="z"><br><br>
-    <label for="send_a">A:</label>
-    <input type="text" id="a" name="a"><br><br>
+    <form action="/can.php">
+    <label for="send_arb">ARB:</label>
+    <input type="text" id="send_arb" name="send_arb"><br><br>
+    <label for="m0">m0:</label>
+    <input type="text" id="m0" name="m0"><br><br>
+
+    <label for="m1">m1:</label>
+    <input type="text" id="m1" name="m1"><br><br>
+
+    <label for="m2">m2:</label>
+    <input type="text" id="m2" name="m2"><br><br>
+
+
+    <label for="m3">m3:</label>
+    <input type="text" id="m3" name="m3"><br><br>
+
+
+    <label for="m4">m4:</label>
+    <input type="text" id="m4" name="m4"><br><br>
+
+
+    <label for="m5">m5:</label>
+    <input type="text" id="m5" name="m5"><br><br>
+
+
+    <label for="m6">m6:</label>
+    <input type="text" id="m6" name="m6"><br><br>
+
+
+    <label for="m7">m7:</label>
+    <input type="text" id="m7" name="m7"><br><br>
     <input type="submit" value="Submit">
     </form>
     </body></html>"""
   return html
 
-
+async def get_can():
+    while True:
+        if can.any():
+            can.recv(mess)
+            print(str(mess[0]) + ', ' + str(buf[0]))
+        await asyncio.sleep_ms(1)
 
 async def buttons():
     while True:
@@ -120,15 +154,33 @@ async def do_hbt():
         hbt_led.value(0)
         await asyncio.sleep(.9)
 
+def send_can(request):
+    end = request.find(' HTTP')
+    action = request[13:end]
+    action += '&'
+    print(action)
+    _mess = []
+    for i in range(9):
+        if action.find('&') - action.find('=') > 1:
+            _mess.append(action[action.find('=')+1:action.find('&')])
+            action = action[action.find('&')+1:]
+    arb_id = int(_mess.pop(0))
+    for i in range(len(_mess)):
+        _mess[i] = int(_mess[i])
+    print('sending')
+    print(arb_id)
+    print(_mess)
+    can.send(_mess, arb_id)
+
+
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
-    print(request)
+    # print(request)
 
     # process request
-    if request.find('/move') == 4:
-        parsed = parse_move(request)
-        # print(parsed)
-        print(convert(**parsed))
+    if request.find('/can') == 4:
+        send_can(request)
+
 
     if request.find('/?led=on') == 4:
         print('turn led on')
@@ -157,6 +209,7 @@ async def main():
     asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
     asyncio.create_task(do_hbt())
     asyncio.create_task(buttons())
+    asyncio.create_task(get_can())
     while True:
         await asyncio.sleep(5)
 
