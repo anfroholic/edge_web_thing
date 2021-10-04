@@ -50,7 +50,7 @@ def convert(**kwargs):
 
         else:
             line = 'can message: {} arb: {} val: {}'.format(command, the_conversions[command], kwargs['val'])
-            # can.send(kwargs['val'], the_conversions[command])
+            can.send(kwargs['val'], the_conversions[command])
     else:
         print('WARNING: UNKNOWN COMMAND in gcode_conversion')
         print(kwargs)
