@@ -16,6 +16,9 @@ import uasyncio as asyncio
 import gc
 gc.collect()
 
+print('programmer board')
+print('v1.00p')
+print('initializing')
 
 port = 80
 

@@ -27,11 +27,16 @@ port = 80
 hbt_led = Pin(5, Pin.OUT)
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
 func_button = Pin(36, Pin.IN) # Has external pullup
 # sd_detect = Pin(10, Pin.IN, Pin.PULL_DOWN)
 
+can_slp = Pin(19, Pin.OUT, value=0)
+can_slp.value(0)
+can = CAN(0, tx=18, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 print('GRBL board test')
-print('V1.5')
+print('V1.51')
 
 #network
 wlan = network.WLAN(network.STA_IF)
@@ -77,6 +82,8 @@ neo_status.write()
 uart1 = UART(1, baudrate=115200, tx=22, rx=23)
 
 
+
+
 def web_page():
 
 
@@ -99,7 +106,7 @@ def web_page():
 
 
     <p><a href="/?led=off"><button class="button button2">neo off</button></a><a href="/?led=on"><button class="button">neo on</button></a>
-    <a href="/?connect"><button class="button button2">connect</button></a><a href="/?run"><button class="button button2">run</button></a></p>
+    <a href="/?connect"><button class="button button2">unmount sd</button></a><a href="/?run"><button class="button button2">run</button></a></p>
 
     <p><a href="/?get_state"><button class="button button3">get_state</button></a><a href="/?unlock"><button class="button button3">unlock</button></a>
     <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
@@ -108,6 +115,9 @@ def web_page():
     <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a></p>
 
     <p><a href="/?mount_sd"><button class="button button3">mount sd</button></a><a href="/?nuke"><button class="button button4">NUKE</button></a><a href="/?get_line"><button class="button button3">get_line</button></a></p>
+
+    <p><a href="/?ring_on"><button class="button button2">ring_on</button></a><a href="/?ring_off"><button class="button button2">ring_off</button></a>
+    <a href="/?suck_on"><button class="button button2">suck_on</button></a><a href="/?suck_off"><button class="button button2">suck_off</button></a></p>
 
     <br><br>
     <p><strong>Move Machine</strong></p>
@@ -137,12 +147,19 @@ def web_page():
     <input type="text" id="direct" name="direct"><br><br>
     <input type="submit" value="Submit">
     </form>
+
+    <p><strong>feeder</strong></p>
+    <form action="/feeder.php">
+    <label for="feeder">feeder:</label>
+    <input type="text" id="feeder" name="feeder"><br><br>
+    <input type="submit" value="Submit">
+    </form>
     </body></html>"""
   return html
 
 class GRBL:
     def __init__(self):
-        self.connection_state = 'not connected'
+        self.connection_state = 'connected'
         self.is_running = 'False'
 
         self.to_parse = ''
@@ -234,7 +251,9 @@ class GRBL:
             # if a message is in queue it probably means it's a can bus message.
             # a dwell has been sent in it's place last round and now it should send
             print('message in queue')
-            print(convert(**self.queue))
+            print(self.queue)
+            mess = [self.queue['val']]
+            can.send(mess, the_conversions[self.queue['command']])
             self.queue = {}
 
         if len(self.file_blurb) < 200:
@@ -276,6 +295,8 @@ class GRBL:
             self.queue = msg
             self.send('G4 P.01')
 
+    def can_send(self, mess, arb):
+        can.send(mess, arb)
 
 
 async def ck_buttons():
@@ -314,9 +335,12 @@ async def handle_client(reader, writer):
     print(action)
 
     # process request
-    if action.find('/move') == 4:
-        parsed = parse_move(request)
-        print(convert(**parsed))
+    if action.find('/move') == 0:
+        parsed = grbl.parse_move(request)
+        print(parsed)
+        cmd = convert(**parsed)
+        print(cmd)
+        uart1.write(cmd + '\n')
 
     elif action == '/?led=on':
         print('turn led on')
@@ -327,11 +351,13 @@ async def handle_client(reader, writer):
         neo_status[0] = (0, 0, 0)
         neo_status.write()
     elif action == '/?connect':
-        print('connecting')
-        grbl.connection_state = 'connected'
+        print('unmounting sd')
+        uos.umount('/sd')
     elif action == '/?run':
         print('run')
         grbl.is_running = 'True'
+        grbl.get_next()
+
     elif action == '/?get_state':
         # print('getting state')
         uart1.write('?')
@@ -345,6 +371,7 @@ async def handle_client(reader, writer):
         print('waking up grbl')
         uart1.write(b'\x18')
         uart1.write('\n')
+
     elif action == '/?homex':
         print('homing x')
         uart1.write('$HX\n')
@@ -357,6 +384,7 @@ async def handle_client(reader, writer):
     elif action == '/?homez':
         print('homing z')
         uart1.write('$HZ\n')
+
     elif action == '/?mount_sd':
         sd = machine.SDCard(slot=3)
         print('mounting sd')
@@ -367,6 +395,18 @@ async def handle_client(reader, writer):
         print('nuking board')
         uos.remove('main.py')
         machine.reset()
+
+    elif action == '/?ring_on':
+        can.send([33,33,33], 397)
+    elif action == '/?ring_off':
+        can.send([0,0,0], 397)
+    elif action == '/?suck_on':
+        print('suction on')
+        can.send([1], 399)
+        print('message sent')
+    elif action == '/?suck_off':
+        can.send([0], 399)
+
     elif action.find('/file') == 0:
         print('opening file')
         fn = action.split('=')
@@ -378,6 +418,10 @@ async def handle_client(reader, writer):
         print('sending direct ' + action)
         action = action + '\n'
         uart1.write(action)
+
+    elif action.find('/feeder') == 0:
+        fn = action.split('=')
+        print(fn)
 
     elif action == '/?get_line':
         print('getting next')

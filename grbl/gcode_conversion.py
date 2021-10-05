@@ -1,3 +1,5 @@
+from machine import UART, CAN
+print('gcode_conversion v1.0 loaded')
 the_conversions = {
     'move.linear': 'G1',
     'move.rapid': 'G0',
@@ -46,11 +48,12 @@ def convert(**kwargs):
                 line += blurb
 
         elif command == 'sleep':
-            line = '{} {}'.format(the_conversions[command], kwargs['val'])
+            line = '{} P{}'.format(the_conversions[command], kwargs['val'])
 
         else:
             line = 'can message: {} arb: {} val: {}'.format(command, the_conversions[command], kwargs['val'])
-            can.send(kwargs['val'], the_conversions[command])
+            print('{}, {}'.format(the_conversions[command], mess))
+
     else:
         print('WARNING: UNKNOWN COMMAND in gcode_conversion')
         print(kwargs)

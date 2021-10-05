@@ -93,7 +93,7 @@ def light_show():
     neo_status.write()
 
 def feed_feeder(feeder):
-    uart1.write(feeder)
+    uart1.write(str(feeder))
 
 
 def ring_light(buf):
