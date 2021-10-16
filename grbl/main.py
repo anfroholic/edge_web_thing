@@ -36,23 +36,22 @@ can_slp = Pin(19, Pin.OUT, value=0)
 can_slp.value(0)
 can = CAN(0, tx=18, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 print('GRBL board test')
-print('V1.51')
+print('V1.52')
 
 #network
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
-
+neo_status[0] = (10, 0, 0)
 aps = wlan.scan()
-print(aps)
-neo_status[0] = (0, 10, 0)
 neo_status.write()
+
+print(aps)
 
 for i in range(len(aps)):
     station = aps[i][0].decode('ascii')
     if station in networks:
         print('connecting to ' + station + ', '+ networks[station])
         wlan.connect(station, networks[station])
-
 
 neo_status[0] = (0, 0, 10)
 neo_status.write()
@@ -63,11 +62,15 @@ while not wlan.isconnected():
 
 print('Connection successful')
 print(wlan.ifconfig())
-
-my_ip = wlan.ifconfig()[0]
 neo_status[0] = (0, 10, 0)
 neo_status.write()
+my_ip = wlan.ifconfig()[0]
+
+
+
 utime.sleep_ms(250)
+uart1 = UART(1, baudrate=115200, tx=22, rx=23)
+
 neo_status[0] = (0, 0, 0)
 neo_status.write()
 
@@ -79,8 +82,8 @@ neo_status.write()
 # utime.sleep(.25)
 
 #set up other comms
-uart1 = UART(1, baudrate=115200, tx=22, rx=23)
 
+gc.collect()
 
 
 
@@ -161,6 +164,8 @@ class GRBL:
     def __init__(self):
         self.connection_state = 'connected'
         self.is_running = 'False'
+        self.sd_init = False
+        self.sd_mounted = False
 
         self.to_parse = ''
         self.index = 0
@@ -276,6 +281,8 @@ class GRBL:
                 self.is_running = 'False'
                 print('closing file')
                 self.f.close()
+                # print('unmounting sd')
+                # uos.umount('/sd')
 
     def file_opener(self, name):
         # TODO: make it so it doesn't break if file does not exist
@@ -289,11 +296,15 @@ class GRBL:
         if msg['command'] in self.modal:
             # print('modal command')
             self.send(convert(**msg))
-        else:
-            # we need to wait until grbl is finished working on modal commands and returns [MSG:Evezor]
+        elif 'command' in msg:
+            # we need to wait until grbl is finished working on modal commands
+            # and returns ok
             # print('pausing')
             self.queue = msg
             self.send('G4 P.01')
+        else:
+            print(msg)
+            self.get_next()
 
     def can_send(self, mess, arb):
         can.send(mess, arb)
@@ -386,9 +397,12 @@ async def handle_client(reader, writer):
         uart1.write('$HZ\n')
 
     elif action == '/?mount_sd':
-        sd = machine.SDCard(slot=3)
+
         print('mounting sd')
+        if not grbl.sd_init:
+            sd = machine.SDCard(slot=3)
         uos.mount(sd, "/sd")
+        grbl.sd_mounted = True
         print('sd contents:')
         print(uos.listdir('/sd'))
     elif action == '/?nuke':
@@ -409,9 +423,14 @@ async def handle_client(reader, writer):
 
     elif action.find('/file') == 0:
         print('opening file')
+        if not grbl.sd_init:
+            sd = machine.SDCard(slot=3)
+        if not grbl.sd_mounted:
+            uos.mount(sd, "/sd")
         fn = action.split('=')
         name = '/sd/' + fn[1]
         grbl.file_opener(name)
+
     elif action.find('/direct') == 0:
         fn = action.split('=')
         action = fn[1].replace('+', ' ')

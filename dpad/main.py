@@ -40,7 +40,6 @@ next_hbt = utime.ticks_add(start, hbt_interval)
 hbt_led.value(hbt_state)
 
 
-
 # Set up peripherals
 a_button_state = 1
 a_button_can_id = 0 # id + self_broadcast
