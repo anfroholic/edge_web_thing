@@ -31,7 +31,7 @@ can_slp.value(0)
 
 # Start CAN
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
-subscriptions = {35:36}
+subscriptions = {}
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
 
@@ -162,6 +162,10 @@ def process(id):
         global broadcast_state
         broadcast_state = buf[0]
         broadcast(broadcast_state)
+    elif id == 48:
+        global subscriptions
+        print('clearing subscriptions')
+        subscriptions = {}
     elif id == 49:
         global subscriptions
         # add this to it's own sub list
