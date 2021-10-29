@@ -149,11 +149,12 @@ class HX711(object):
         # print(corrected)
         corrected = int(corrected)
         if abs(corrected - self.old) > 1:
-            print(corrected)
+            # print(corrected)
             self.old = corrected
         # if abs(self.state - self.old) > 1:
         #     print(self.state - self.zero)
         #     self.old = self.state
+            return corrected
 
     def read(self, raw=False):
         """

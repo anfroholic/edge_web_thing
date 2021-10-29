@@ -1,9 +1,8 @@
 import esp32
-import machine
+import machine as upython
 from machine import Pin, ADC, Timer, PWM, UART, CAN
 from neopixel import NeoPixel
 import utime
-import machine
 import struct
 
 print('dpad board')
@@ -15,7 +14,7 @@ broadcast_state = False
 subscriptions = {}
 
 # Set up standard components
-machine.freq(240000000)
+upython.freq(240000000)
 hbt_led = Pin(5, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
@@ -159,7 +158,7 @@ def process(id):
     if id == 1:
         light_show()
     elif id == 2:
-        machine.reset()
+        upython.reset()
     elif id == 3:
         neo_status[0] = (buf[0], buf[1], buf[2])
         neo_status.write()

@@ -37,8 +37,8 @@ can_slp.value(0)
 # Start CAN
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
 
-c_buf = bytearray(8)
-c_mess = [0, 0, 0, memoryview(c_buf)]
+buf = bytearray(8)
+mess = [0, 0, 0, memoryview(buf)]
 
 scale = hx711.HX711(d_out=19, pd_sck=18)
 utime.sleep(1)
@@ -83,6 +83,13 @@ def light_show():
     neo_status[0] = (0, 0, 0)
     neo_status.write()
 
+def broadcast(state):
+    if state:
+        neo_status[0] = (0, 10, 0)
+        neo_status.write()
+    else:
+        neo_status[0] = (0, 0, 0)
+        neo_status.write()
 
 def send(arb, msg):
     global broadcast_state
@@ -90,11 +97,40 @@ def send(arb, msg):
         can.send(msg, arb)
 
 def get():
-    if can.any():
-        can.recv(c_mess)
-    else:
-        print('no messages')
-    return c_mess
+    can.recv(mess)
+    if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
+        process(mess[0]%100)
+    if mess[0] in subscriptions:
+        process(subscriptions[mess[0]])
+
+
+def process(id):
+    print(id)
+    if id == 1:
+        light_show()
+    elif id == 2:
+        upython.reset()
+    elif id == 3:
+        neo_status[0] = (buf[0], buf[1], buf[2])
+        neo_status.write()
+    elif id == 4:
+        global broadcast_state
+        broadcast_state = buf[0]
+        broadcast(broadcast_state)
+    elif id == 48:
+        global subscriptions
+        print('clearing subscriptions')
+        subscriptions = {}
+    elif id == 49:
+        global subscriptions
+        # add this to it's own sub list
+        sub = struct.unpack('II', buf)
+        subscriptions[sub[0]] = sub[1] # sender: receiver
+        print(sub)
+    elif id == 98:
+        led_b.value(buf[0])
+    elif id == 97:
+        scale.tare()
 
 while True:
     chk_hbt()
@@ -108,6 +144,7 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
+
     if not a_button.value():
         print('a button pressed')
         scale.check()
@@ -119,3 +156,11 @@ while True:
         utime.sleep(.5)
         b_led.value(0)
         utime.sleep(.5)
+
+    weight = scale.check()
+    if weight:
+        print('weight: {}, can_id: {}'.format(weight, (this_id+50)))
+        if broadcast_state:
+            can.send([weight], this_id + 50)
+
+    utime.sleep_ms(20)
