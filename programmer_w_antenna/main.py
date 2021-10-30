@@ -3,7 +3,7 @@
 
 import utime
 from machine import Pin, CAN, ADC
-import machine
+import machine as upython
 import network
 from neopixel import NeoPixel
 import esp
@@ -147,17 +147,15 @@ def web_page():
     <input type="submit" value="Submit">
     </form>
     <br><br>
-    <p><strong>Send CAN Message</strong></p>
+    <p><strong>Create Subscriber</strong></p>
 
     <form action="/sub.php">
-    <label for="sub_num">Subscriber #:</label>
+    <label for="sub_num">Broadcast ID:</label>
     <input type="text" id="sub_num" name="sub_num"><br><br>
 
-    <label for="send_id">send ID:</label>
+    <label for="send_id">Subscriber ID:</label>
     <input type="text" id="send_id" name="send_id"><br><br>
 
-    <label for="recv_id">recv ID:</label>
-    <input type="text" id="recv_id" name="recv_id"><br><br>
 
     <input type="submit" value="Submit">
     </form>
@@ -209,13 +207,18 @@ def make_sub(request):
     print(action)
     sub = action.split('&')
     _sub = []
-    for i in range(3):
+    for i in range(2):
         _sub.append(sub[i].split('=')[1])
-    _mess = struct.pack('II', int(_sub[1]), int(_sub[2]))
+        _sub[i] = int(_sub[i])
+    board = int(_sub[1]/100)*100
+    print(board)
+    _sub[1] = _sub[1]%100
+    _mess = struct.pack('II', _sub[0], _sub[1]) # sender: receiver
     beer = []
     for i in range(len(_mess)):
         beer.append(int(_mess[i]))
-    can.send(beer, (int(_sub[0])+49))
+    print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(_sub[1]), str(_sub[0])))
+    can.send(beer, board+49) # sub listener is on id 49
 
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')

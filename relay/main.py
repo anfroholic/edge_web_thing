@@ -3,7 +3,7 @@ import machine
 from machine import Pin, ADC, Timer, PWM, UART, CAN
 from neopixel import NeoPixel
 import utime
-import machine
+import machine as upython
 import struct
 
 print('relay board')
@@ -66,14 +66,33 @@ class Button:
 # Set up peripherals
 
 button_1 = Button('button_1', 33, True, 50)
-button_2 = Button('button_2', 32, True, 50)
+button_2 = Button('button_2', 32, True, 51)
 
 relay_1 = Pin(22, Pin.OUT, value=0)
 relay_2 = Pin(21, Pin.OUT, value=0)
 relay_3 = Pin(19, Pin.OUT, value=0)
 relay_4 = Pin(23, Pin.OUT, value=0)
 
-
+class Operator:
+    def __init__(self, name, can_id, broadcast_id):
+        self.name = name
+        self.latch = False
+        self.can_id = can_id
+        self.broadcast_id = this_id + broadcast_id
+        print('{} initialized on can_id {}'.format(self.name, self.can_id))
+        pass
+    def _latch(self, switch):
+        # global buf
+        if switch == 1:
+            self.latch = not self.latch
+            if self.latch:
+                buf[0] = 1
+            else:
+                buf[0] = 0
+            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
+            if self.can_id + 1 + this_id in subscriptions:
+                process(subscriptions[self.broadcast_id])
+operator = Operator('_latch', 40, 41)
 
 
 def chk_hbt():
@@ -137,7 +156,7 @@ def process(id):
     if id == 1:
         light_show()
     elif id == 2:
-        machine.reset()
+        upython.reset()
     elif id == 3:
         neo_status[0] = (buf[0], buf[1], buf[2])
         neo_status.write()
@@ -145,6 +164,8 @@ def process(id):
         global broadcast_state
         broadcast_state = buf[0]
         broadcast(broadcast_state)
+    elif id == 40:
+        operator._latch(buf[0])
     elif id == 48:
         global subscriptions
         print('clearing subscriptions')

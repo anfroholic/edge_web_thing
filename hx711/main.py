@@ -9,7 +9,7 @@ import struct
 print('hx711 test code')
 print('v1.0')
 print('initializing')
-this_id = 500
+this_id = 800
 print(this_id)
 broadcast_state = False
 subscriptions = {}

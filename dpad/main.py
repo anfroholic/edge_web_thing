@@ -11,7 +11,7 @@ print('initializing')
 this_id = 500
 print(this_id)
 broadcast_state = False
-subscriptions = {}
+subscriptions = {541: 90}
 
 # Set up standard components
 upython.freq(240000000)
@@ -73,6 +73,28 @@ class Analog:
             if broadcast_state:
                 can.send([self.state], self.can_id)
 
+class Operator:
+    def __init__(self, name, can_id, broadcast_id):
+        self.name = name
+        self.latch = False
+        self.can_id = can_id
+        self.broadcast_id = this_id + broadcast_id
+        print('{} initialized on can_id {}'.format(self.name, self.can_id))
+        pass
+    def _latch(self, switch):
+        # global buf
+        if switch == 1:
+            self.latch = not self.latch
+            if self.latch:
+                buf[0] = 1
+            else:
+                buf[0] = 0
+            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
+            if self.can_id + 1 + this_id in subscriptions:
+                process(subscriptions[self.broadcast_id])
+operator = Operator('_latch', 40, 41)
+
+
 a_button = Button('a_button', 23, True, 50)
 b_button = Button('b_button', 22, True, 51)
 up = Button('up button', 25, True, 52)
@@ -133,13 +155,6 @@ def broadcast(state):
         neo_status[0] = (0, 0, 0)
         neo_status.write()
 
-def reverse(state):
-    if state == 0:
-        state = 1
-    else:
-        state = 0
-    return state
-
 def send(arb, msg):
     global broadcast_state
     if broadcast_state:
@@ -166,6 +181,8 @@ def process(id):
         global broadcast_state
         broadcast_state = buf[0]
         broadcast(broadcast_state)
+    elif id == 40:
+        operator._latch(buf[0])
     elif id == 48:
         global subscriptions
         print('clearing subscriptions')

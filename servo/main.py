@@ -1,9 +1,9 @@
 import esp32
-import machine
+import machine as upython
 from machine import Pin, ADC, Timer, PWM, UART, CAN
 from neopixel import NeoPixel
 import utime
-import machine
+import struct
 
 print('Servo board')
 print('v1.00p')
@@ -12,9 +12,10 @@ this_id = 400
 print(this_id)
 broadcast_state = False
 self_broadcast = this_id + 50
+subscriptions = {}
 
 # Set up standard components
-machine.freq(240000000)
+upython.freq(240000000)
 hbt_led = Pin(5, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
@@ -32,6 +33,54 @@ can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
 
+
+class Button:
+    def __init__(self, name, pin, pull_up, can_id):
+        self.name = name
+        print(self.name)
+        #self.pin = pin
+        self.pullup = pull_up
+        self.state = None
+        self.can_id = can_id + this_id
+        if pull_up:
+            self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
+        else:
+            self.pin = Pin(pin, Pin.IN)
+        self.state = self.pin.value()
+
+    def check(self):
+        global broadcast_state
+        if self.state != self.pin.value():
+            self.state = not self.state
+            print('{} state: {} can_id: {}'.format(self.name, not self.state, self.can_id))
+            if broadcast_state:
+                can.send([not self.state], self.can_id)
+
+a_button = Button('a_button', 22, True, 50)
+b_button = Button('b_button', 23, True, 51)
+
+class Operator:
+    def __init__(self, name, can_id, broadcast_id):
+        self.name = name
+        self.latch = False
+        self.can_id = can_id
+        self.broadcast_id = this_id + broadcast_id
+        print('{} initialized on can_id {}'.format(self.name, self.can_id))
+        pass
+    def _latch(self, switch):
+        # global buf
+        if switch == 1:
+            self.latch = not self.latch
+            if self.latch:
+                buf[0] = 1
+            else:
+                buf[0] = 0
+            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
+            if self.can_id + 1 + this_id in subscriptions:
+                process(subscriptions[self.broadcast_id])
+operator = Operator('_latch', 40, 41)
+
+
 # Set up hbt timer
 hbt_state = 0
 hbt_interval = 500
@@ -41,20 +90,10 @@ hbt_led.value(hbt_state)
 
 
 
-# Set up peripherals
-a_button_state = 1
-a_button_can_id = 0 # id + self_broadcast
-a_button = Pin(22, Pin.IN, Pin.PULL_UP)
-
-b_button_state = 1
-b_button_can_id = 1
-b_button = Pin(23, Pin.IN, Pin.PULL_UP)
-
-
 # Mistake!!! Servo 7 and 9 are not usable! Also Servo 12, we are OUT of PWM channels. There are a max of
 servo_label = ['servo_1', 'servo_2', 'servo_3', 'servo_4', 'servo_6', 'servo_8', 'servo_10', 'servo_12']
 servos = [26, 27, 25, 14, 12, 18, 19, 21]
-servo_can_id = [81, 82, 83, 84, 86, 88, 90, 92]
+servo_can_id = [91, 92, 93, 94, 95, 96, 97, 98]
 
 for servo in range(len(servos)):
     print('set up servo {} on pin {}'.format(servo_label[servo], servos[servo]))
@@ -91,12 +130,13 @@ def light_show():
     neo_status.write()
 
 def move_servo(servo, pos):
-    mapped = round((pos * .433) + 20)
-    # servo.duty(mapped)
-    print(mapped)
+    pos = (pos - 255)*-1
+    mapped = round(pos * .433) + 20
+    servo_label[servo].duty(mapped)
+    print('moving servo {} to {}'.format(servo, mapped))
 
 def move_all_servos(pos):
-    for servo in servo_label:
+    for servo in range(len(servo_label)):
             move_servo(servo, pos)
 
 def broadcast(state):
@@ -121,52 +161,51 @@ def send(arb, msg):
 
 def get():
     can.recv(mess)
+    if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
+        process(mess[0]%100)
+    if mess[0] in subscriptions:
+        process(subscriptions[mess[0]])
     # print(str(mess[0]) + ', ' + str(buf[0]))
 
-    # these are messages for all boards
-    if mess[0] <= 100:
-        if mess[0] == 1:
-            light_show()
-        elif mess[0] == 2:
-            machine.reset()
-        elif mess[0] == 3:
-            neo_status[0] = (buf[0], buf[1], buf[2])
-            neo_status.write()
-        elif mess[0] == 4:
-            global broadcast_state
-            broadcast_state = buf[0]
-            broadcast(broadcast_state)
+def process(id):
+    print(id)
+    if id == 1:
+        light_show()
+    elif id == 2:
+        upython.reset()
+    elif id == 3:
+        neo_status[0] = (buf[0], buf[1], buf[2])
+        neo_status.write()
+    elif id == 4:
+        global broadcast_state
+        broadcast_state = buf[0]
+        broadcast(broadcast_state)
+    elif id == 40:
+        operator._latch(buf[0])
+    elif id == 48:
+        global subscriptions
+        print('clearing subscriptions')
+        subscriptions = {}
+    elif id == 49:
+        global subscriptions
+        # add this to it's own sub list
+        sub = struct.unpack('II', buf)
+        subscriptions[sub[0]] = sub[1] # sender: receiver
+        print(sub)
 
-    # messages to self
-    elif mess[0] >= this_id and mess[0] <= (this_id+99):
-        this_arb = mess[0] - this_id
-        if this_arb == 1:
-            light_show()
-        elif this_arb == 2:
-            machine.reset()
-        elif this_arb == 3:
-            neo_status[0] = (buf[0], buf[1], buf[2])
-            neo_status.write()
+    elif id in servo_can_id:
+        print('move_servo')
+        print(servo_can_id.index(id))
+        move_servo(servo_can_id.index(id), buf[0])
 
-
-        elif this_arb in servo_can_id:
-            print('move_servo')
-            print(servo_can_id.index(this_arb))
-            move_servo(servo_can_id.index(this_arb), buf[0])
-
-        elif this_arb == 99:
-            move_all_servos(buf[0])
-
-    # # dpad pot_a
-    # elif mess[0] == 557:
-    #     move_servo('servo_1', buf[0])
-    # # dpad pot_b
-    # elif mess[0] == 558:
-    #     move_servo('servo_2', buf[0])
+    elif id == 99:
+        move_all_servos(buf[0])
 
 
-    # else:
-    #     print('unknown command')
+    else:
+        print('unknown command')
+
+
 
 while True:
     chk_hbt()
@@ -180,14 +219,5 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
-    if a_button.value() != a_button_state:
-        a_button_state = a_button.value()
-        arb = self_broadcast + a_button_can_id
-        print('a_button state: ' + str(a_button_state))
-        send(arb, [reverse(a_button_state)])
-
-    if b_button.value() != b_button_state:
-        b_button_state = b_button.value()
-        arb = self_broadcast + b_button_can_id
-        print('b_button state: ' + str(b_button_state))
-        send(arb, [reverse(b_button_state)])
+    a_button.check()
+    b_button.check()
