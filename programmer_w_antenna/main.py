@@ -23,6 +23,23 @@ port = 80
 networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 
+test_prog = [
+[752, 690], # lcd button -> relay
+[753, 691], # lcd button -> relay
+[754, 692], # lcd button -> relay
+[755, 693], # lcd button -> relay
+[850, 799], # load cell -> lcd screen
+[850, 491], # load cell -> servo
+[557, 798], # dpad pot -> lcd screen
+[557, 492], # dpad pot -> servo
+[558, 493], # dpad pot -> servo
+[552, 994], # dpad up -> red stack
+[553, 996], # dpad down -> green stack
+[556, 999] # dpad push -> stack beeper
+]
+
+connections = ''
+
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
@@ -85,7 +102,7 @@ else:
     my_ip = wlan.ifconfig()[0]
 
 def web_page():
-  connect_state = 'fix connection'
+  global connections
 
   html = """
 <html>
@@ -100,7 +117,7 @@ def web_page():
     </head>
     <body>
     <h1>Evezor Web Interface</h1>
-    <p>Connection State: <strong>""" + connect_state + """</strong></p>
+    <p>Connections:</p> <strong>""" + connections + """</strong>
 
     <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a></p>
 
@@ -109,6 +126,7 @@ def web_page():
     <a href="/?light_show"><button class="button button3">light show</button></a>
     <a href="/?broadcast"><button class="button button3">broadcast</button></a>
     <a href="/?!broadcast"><button class="button button3">!broadcast</button></a>
+    <a href="/?demo_1"><button class="button button2">demo_1</button></a>
     </p>
     <br><br>
     <p><strong>Send CAN Message</strong></p>
@@ -201,7 +219,28 @@ def send_can(request):
     print(_mess)
     can.send(_mess, arb_id)
 
-def make_sub(request):
+def demo_1():
+    for sub in test_prog:
+        make_sub(sub[0], sub[1])
+        utime.sleep_ms(2)
+
+def make_sub(sender, receiver):
+    global connections
+    connections += '<p>{}, {}</p>'.format(sender, receiver)
+    board = int(receiver/100)*100
+    print(board)
+    receiver = receiver%100
+    _mess = struct.pack('II', sender, receiver) # sender: receiver
+    beer = []
+    for i in range(len(_mess)):
+        beer.append(int(_mess[i]))
+    print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(receiver), str(sender)))
+
+    can.send(beer, board+49) # sub listener is on id 49
+
+
+
+def parse_sub(request):
     end = request.find(' HTTP')
     action = request[13:end]
     print(action)
@@ -230,7 +269,7 @@ async def handle_client(reader, writer):
     if request.find('/can') == 4:
         send_can(request)
     if request.find('/sub') == 4:
-        make_sub(request)
+        parse_sub(request)
 
     elif action == '/?led=on':
         print('turn led on')
@@ -241,6 +280,7 @@ async def handle_client(reader, writer):
         neo_status[0] = (0, 0, 0)
         neo_status.write()
     elif action == '/?reset':
+        connections = ''
         can.send([1], 2)
     elif action == '/?light_show':
         can.send([1], 1)
@@ -248,6 +288,8 @@ async def handle_client(reader, writer):
         can.send([1], 4)
     elif action == '/?!broadcast':
         can.send([0], 4)
+    elif action == '/?demo_1':
+        demo_1()
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')

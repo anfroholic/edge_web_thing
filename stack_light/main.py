@@ -99,6 +99,27 @@ def chk_hbt():
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
 
+def this_show():
+    red_led.value(1)
+    utime.sleep_ms(300)
+    yellow_led.value(1)
+    utime.sleep_ms(300)
+    green_led.value(1)
+    utime.sleep_ms(300)
+    blue_led.value(1)
+    utime.sleep_ms(300)
+    white_led.value(1)
+    utime.sleep_ms(300)
+    buzzer.value(1)
+    utime.sleep_ms(300)
+    red_led.value(0)
+    yellow_led.value(0)
+    green_led.value(0)
+    blue_led.value(0)
+    white_led.value(0)
+    buzzer.value(0)
+
+
 def light_show():
     neo_status[0] = (0, 33, 0)
     neo_status.write()

@@ -5,13 +5,13 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-print('dpad board')
+print('mosfet board')
 print('v1.00p')
 print('initializing')
-this_id = 500
+this_id = 1100
 print(this_id)
 broadcast_state = False
-subscriptions = {541: 90}
+subscriptions = {}
 
 # Set up standard components
 upython.freq(240000000)
@@ -95,22 +95,14 @@ class Operator:
 operator = Operator('_latch', 40, 41)
 
 
-a_button = Button('a_button', 23, True, 50)
-b_button = Button('b_button', 22, True, 51)
-up = Button('up button', 25, True, 52)
-down = Button('down_button', 27, True, 53)
-left = Button('left_button', 33, True, 54)
-right = Button('right_button', 26, True, 55)
-push = Button('push_button', 32, True, 56)
 
-pot_a = Analog('a_pot', 34, 57)
-pot_b = Analog('b_pot', 35, 58)
 
-led_0 = Pin(15, Pin.OUT, value=0)
-led_1 = Pin(18, Pin.OUT, value=0)
-led_2 = Pin(19, Pin.OUT, value=0)
-led_3 = Pin(21, Pin.OUT, value=0)
-
+output_1 = Pin(19, Pin.OUT, value=0)
+output_2 = Pin(18, Pin.OUT, value=0)
+output_3 = Pin(25, Pin.OUT, value=0)
+output_4 = Pin(21, Pin.OUT, value=0)
+output_5 = Pin(22, Pin.OUT, value=0)
+output_6 = Pin(23, Pin.OUT, value=0)
 
 # Set up hbt timer
 hbt_state = 0
@@ -135,19 +127,24 @@ def chk_hbt():
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
 def this_show():
-    print('doing show')
-    led_0.value(1)
+    output_1.value(1)
     utime.sleep_ms(300)
-    led_1.value(1)
+    output_2.value(1)
     utime.sleep_ms(300)
-    led_2.value(1)
+    output_3.value(1)
     utime.sleep_ms(300)
-    led_3.value(1)
+    output_4.value(1)
     utime.sleep_ms(300)
-    led_0.value(0)
-    led_1.value(0)
-    led_2.value(0)
-    led_3.value(0)
+    output_5.value(1)
+    utime.sleep_ms(300)
+    output_6.value(1)
+    utime.sleep_ms(300)
+    output_1.value(0)
+    output_2.value(0)
+    output_3.value(0)
+    output_4.value(0)
+    output_5.value(0)
+    output_6.value(0)
 
 def light_show():
     neo_status[0] = (0, 33, 0)
@@ -209,14 +206,20 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 90:
-        led_0.value(buf[0])
+    elif id == 79:
+        this_show()
     elif id == 91:
-        led_1.value(buf[0])
+        output_1.value(buf[0])
     elif id == 92:
-        led_2.value(buf[0])
+        output_2.value(buf[0])
     elif id == 93:
-        led_3.value(buf[0])
+        output_3.value(buf[0])
+    elif id == 94:
+        output_4.value(buf[0])
+    elif id == 95:
+        output_5.value(buf[0])
+    elif id == 96:
+        output_6.value(buf[0])
 
     else:
         print('unknown command')
@@ -232,14 +235,3 @@ while True:
         broadcast_state = not broadcast_state
         broadcast(broadcast_state)
         utime.sleep_ms(200)
-
-    a_button.check()
-    b_button.check()
-    up.check()
-    down.check()
-    left.check()
-    right.check()
-    push.check()
-
-    pot_a.check()
-    pot_b.check()

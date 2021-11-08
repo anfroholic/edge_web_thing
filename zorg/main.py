@@ -1,20 +1,21 @@
-import esp32
-import machine as upython
+#import esp32
+import machine
 from machine import Pin, ADC, Timer, PWM, UART, CAN
 from neopixel import NeoPixel
 import utime
 import struct
+import uos
 
-print('dpad board')
+print('zorg board')
 print('v1.00p')
 print('initializing')
-this_id = 500
+this_id = 100
 print(this_id)
 broadcast_state = False
-subscriptions = {541: 90}
+subscriptions = {}
 
 # Set up standard components
-upython.freq(240000000)
+machine.freq(240000000)
 hbt_led = Pin(5, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
@@ -24,6 +25,12 @@ neo_status = NeoPixel(neo_status_pin, 1)
 neo_status[0] = (0, 0, 0)
 neo_status.write()
 
+neo_bus_pin = Pin(27, Pin.OUT)
+neo_bus = NeoPixel(neo_bus_pin, 1)
+neo_bus[0] = (0, 0, 0)
+neo_bus.write()
+
+
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
@@ -31,6 +38,12 @@ can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
+
+sd_init = False
+cmd = Pin(15, Pin.PULL_UP)
+sk = Pin(12, Pin.PULL_UP)
+s1k = Pin(13, Pin.PULL_UP)
+
 
 class Button:
     def __init__(self, name, pin, pull_up, can_id):
@@ -95,21 +108,17 @@ class Operator:
 operator = Operator('_latch', 40, 41)
 
 
-a_button = Button('a_button', 23, True, 50)
-b_button = Button('b_button', 22, True, 51)
-up = Button('up button', 25, True, 52)
-down = Button('down_button', 27, True, 53)
-left = Button('left_button', 33, True, 54)
-right = Button('right_button', 26, True, 55)
-push = Button('push_button', 32, True, 56)
+a_button = Button('a_button', 32, True, 50)
+b_button = Button('b_button', 26, True, 51)
+c_button = Button('c_button', 19, True, 52)
+d_button = Button('d_button', 23, True, 53)
+# sd_detect = Pin(18, Pin.IN, Pin.PULL_UP)
+sd_detect = Button('sd_detect', 18, True, 54)
 
-pot_a = Analog('a_pot', 34, 57)
-pot_b = Analog('b_pot', 35, 58)
-
-led_0 = Pin(15, Pin.OUT, value=0)
-led_1 = Pin(18, Pin.OUT, value=0)
-led_2 = Pin(19, Pin.OUT, value=0)
-led_3 = Pin(21, Pin.OUT, value=0)
+led_a = Pin(33, Pin.OUT, value=0)
+led_b = Pin(25, Pin.OUT, value=0)
+led_c = Pin(21, Pin.OUT, value=0)
+led_d = Pin(22, Pin.OUT, value=0)
 
 
 # Set up hbt timer
@@ -136,30 +145,38 @@ def chk_hbt():
 
 def this_show():
     print('doing show')
-    led_0.value(1)
+    led_a.value(1)
     utime.sleep_ms(300)
-    led_1.value(1)
+    led_b.value(1)
     utime.sleep_ms(300)
-    led_2.value(1)
+    led_c.value(1)
     utime.sleep_ms(300)
-    led_3.value(1)
+    led_d.value(1)
     utime.sleep_ms(300)
-    led_0.value(0)
-    led_1.value(0)
-    led_2.value(0)
-    led_3.value(0)
+    led_a.value(0)
+    led_b.value(0)
+    led_c.value(0)
+    led_d.value(0)
 
 def light_show():
     neo_status[0] = (0, 33, 0)
+    neo_bus[0] = (0, 33, 0)
+    neo_bus.write()
     neo_status.write()
     utime.sleep_ms(250)
     neo_status[0] = (0, 0, 33)
+    neo_bus[0] = (0, 0, 33)
+    neo_bus.write()
     neo_status.write()
     utime.sleep_ms(250)
     neo_status[0] = (33, 0, 0)
+    neo_bus[0] = (33, 0, 0)
+    neo_bus.write()
     neo_status.write()
     utime.sleep_ms(250)
     neo_status[0] = (0, 0, 0)
+    neo_bus[0] = (0, 0, 0)
+    neo_bus.write()
     neo_status.write()
 
 def broadcast(state):
@@ -188,7 +205,7 @@ def process(id):
     if id == 1:
         light_show()
     elif id == 2:
-        upython.reset()
+        machine.reset()
     elif id == 3:
         neo_status[0] = (buf[0], buf[1], buf[2])
         neo_status.write()
@@ -232,14 +249,14 @@ while True:
         broadcast_state = not broadcast_state
         broadcast(broadcast_state)
         utime.sleep_ms(200)
+        if sd_init == False:
+            sdd = machine.SDCard(slot=3)
+            uos.mount(sdd, "/sd")
+            print('sd contents:')
+            print(uos.listdir('/sd'))
 
     a_button.check()
     b_button.check()
-    up.check()
-    down.check()
-    left.check()
-    right.check()
-    push.check()
-
-    pot_a.check()
-    pot_b.check()
+    c_button.check()
+    d_button.check()
+    sd_detect.check()
