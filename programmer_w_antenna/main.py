@@ -35,7 +35,22 @@ test_prog = [
 [558, 493], # dpad pot -> servo
 [552, 994], # dpad up -> red stack
 [553, 996], # dpad down -> green stack
-[556, 999] # dpad push -> stack beeper
+[556, 999], # dpad push -> stack beeper
+[941, 995], # stack latch -> self yellow
+[550, 940],  # dpad_a -> stack latch
+[1251, 940],  # joy yellow -> stack latch
+[1250, 996], # joy green -> green stack
+[1253, 994], # joy red -> red stack
+[1262, 495], # joy X -> servo
+[1263, 496], # joy y -> servo
+[1264, 497], # joy X -> servo
+[1265, 498], # joy y -> servo
+[1252, 1191], # joy blue -> mosfet 1
+[1256, 1090], # joy up -> analog out1
+[1258, 1091], # joy up -> analog out1
+[1257, 1092], # joy up -> analog out1
+[1259, 1192], # joy up -> analog out1
+[1254, 1193] # joy up -> analog out1
 ]
 
 connections = ''
@@ -249,15 +264,16 @@ def parse_sub(request):
     for i in range(2):
         _sub.append(sub[i].split('=')[1])
         _sub[i] = int(_sub[i])
-    board = int(_sub[1]/100)*100
-    print(board)
-    _sub[1] = _sub[1]%100
-    _mess = struct.pack('II', _sub[0], _sub[1]) # sender: receiver
-    beer = []
-    for i in range(len(_mess)):
-        beer.append(int(_mess[i]))
-    print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(_sub[1]), str(_sub[0])))
-    can.send(beer, board+49) # sub listener is on id 49
+    make_sub(_sub[0],_sub[1])
+    # board = int(_sub[1]/100)*100
+    # print(board)
+    # _sub[1] = _sub[1]%100
+    # _mess = struct.pack('II', _sub[0], _sub[1]) # sender: receiver
+    # beer = []
+    # for i in range(len(_mess)):
+    #     beer.append(int(_mess[i]))
+    # print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(_sub[1]), str(_sub[0])))
+    # can.send(beer, board+49) # sub listener is on id 49
 
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
@@ -280,6 +296,7 @@ async def handle_client(reader, writer):
         neo_status[0] = (0, 0, 0)
         neo_status.write()
     elif action == '/?reset':
+        global connections
         connections = ''
         can.send([1], 2)
     elif action == '/?light_show':

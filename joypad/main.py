@@ -5,17 +5,15 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-
-print('stack light board test code')
-print('v1.0')
+print('joypad board')
+print('v1.1')
 print('initializing')
-this_id = 900
+this_id = 1200
 print(this_id)
 broadcast_state = False
 subscriptions = {}
 
-
-# Setup standard components
+# Set up standard components
 upython.freq(240000000)
 hbt_led = Pin(5, Pin.OUT, value=0)
 
@@ -29,17 +27,19 @@ neo_status.write()
 
 
 
-white_led = Pin(25, Pin.OUT, value=0)
-blue_led = Pin(26, Pin.OUT, value=0)
-green_led = Pin(27, Pin.OUT, value=0)
-yellow_led = Pin(14, Pin.OUT, value=0)
-red_led = Pin(12, Pin.OUT, value=0)
-buzzer = Pin(32, Pin.OUT, value=0)
+neo_bar_pin = Pin(12, Pin.OUT)
+neo_bar = NeoPixel(neo_bar_pin, 5)
+
+def set_bar(r,g,b):
+    for i in range(5):
+        neo_bar[i] = (r, g, b)
+    neo_bar.write()
+
+set_bar(0,0,0)
 
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
-# Start CAN
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
@@ -67,11 +67,24 @@ class Button:
             if broadcast_state:
                 can.send([not self.state], self.can_id)
 
-
-minus_button = Button('minus_button', 23, True, 50)
-plus_button = Button('plus_button', 33, True, 51)
-off_button = Button('off_button', 39, False, 52)
-buzz_button = Button('buzz_button', 22, True, 53)
+class Analog:
+    def __init__(self, name, pin, can_id):
+        self.name = name
+        print(self.name)
+        self.state = None
+        self.can_id = can_id + this_id
+        self.pin = ADC(Pin(pin))
+        self.pin.atten(ADC.ATTN_11DB)
+        self.pin.width(ADC.WIDTH_12BIT)
+        self.old = int(self.pin.read()/16)
+    def check(self):
+        self.state = int(self.pin.read()/16)
+        global broadcast_state
+        if abs(self.state - self.old) > 1:
+            self.old = self.state
+            print('{}: {} can_id: {}'.format(self.name, self.state, self.can_id))
+            if broadcast_state:
+                can.send([self.state], self.can_id)
 
 class Operator:
     def __init__(self, name, can_id, broadcast_id):
@@ -94,13 +107,31 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
-# Setup hbt timer
+
+green_button = Button('green_button', 25, True, 50)
+red_button = Button('red_button', 26, True, 51)
+blue_button = Button('blue_button', 27, True, 52)
+yellow_button = Button('yellow_button', 33, True, 53)
+start_button = Button('start_button', 13, True, 54)
+select_button = Button('select_button', 15, True, 55)
+up_button = Button('up_button', 21, True, 56)
+down_button = Button('down_button', 23, True, 57)
+left_button = Button('left_button', 19, True, 58)
+right_button = Button('right_button', 22, True, 59)
+l_joy_push = Button('l_joy_push', 18, True, 60)
+r_joy_push = Button('r_joy_push', 14, True, 61)
+
+l_joy_x = Analog('L_X', 35, 62)
+l_joy_y = Analog('L_Y', 32, 63)
+r_joy_x = Analog('R_X', 34, 64)
+r_joy_y = Analog('R_Y', 39, 65)
+
+# Set up hbt timer
 hbt_state = 0
-hbt_interval = 900
+hbt_interval = 500
 start = utime.ticks_ms()
 next_hbt = utime.ticks_add(start, hbt_interval)
 hbt_led.value(hbt_state)
-
 
 def chk_hbt():
     global next_hbt
@@ -117,40 +148,28 @@ def chk_hbt():
 
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
-
-def this_show():
-    red_led.value(1)
-    utime.sleep_ms(300)
-    yellow_led.value(1)
-    utime.sleep_ms(300)
-    green_led.value(1)
-    utime.sleep_ms(300)
-    blue_led.value(1)
-    utime.sleep_ms(300)
-    white_led.value(1)
-    utime.sleep_ms(300)
-    buzzer.value(1)
-    utime.sleep_ms(300)
-    red_led.value(0)
-    yellow_led.value(0)
-    green_led.value(0)
-    blue_led.value(0)
-    white_led.value(0)
-    buzzer.value(0)
+def this_show():    
+    set_bar(0, 33, 0)
+    utime.sleep_ms(250)
+    set_bar(0, 0, 33)
+    utime.sleep_ms(250)
+    set_bar(33, 0, 0)
+    utime.sleep_ms(250)
+    set_bar(0, 0, 0)
 
 
 def light_show():
-    neo_status[0] = (0, 33, 0)
-    neo_status.write()
+    neo_bar[0] = (0, 33, 0)
+    neo_bar.write()
     utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 33)
-    neo_status.write()
+    neo_bar[0] = (0, 0, 33)
+    neo_bar.write()
     utime.sleep_ms(250)
-    neo_status[0] = (33, 0, 0)
-    neo_status.write()
+    neo_bar[0] = (33, 0, 0)
+    neo_bar.write()
     utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 0)
-    neo_status.write()
+    neo_bar[0] = (0, 0, 0)
+    neo_bar.write()
 
 
 def broadcast(state):
@@ -200,20 +219,8 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 99:
-        buzzer.value(buf[0])
-    elif id == 98:
-        white_led.value(buf[0])
-    elif id == 97:
-        blue_led.value(buf[0])
-    elif id == 96:
-        green_led.value(buf[0])
-    elif id == 95:
-        yellow_led.value(buf[0])
-    elif id == 94:
-        red_led.value(buf[0])
-
-
+    elif id == 79:
+        this_show()
     else:
         print('unknown command')
 
@@ -229,7 +236,20 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
-    minus_button.check()
-    plus_button.check()
-    buzz_button.check()
-    off_button.check()
+    up_button.check()
+    select_button.check()
+    start_button.check()
+    yellow_button.check()
+    blue_button.check()
+    red_button.check()
+    green_button.check()
+    down_button.check()
+    left_button.check()
+    right_button.check()
+    l_joy_push.check()
+    r_joy_push.check()
+
+    l_joy_y.check()
+    l_joy_x.check()
+    r_joy_y.check()
+    r_joy_x.check()

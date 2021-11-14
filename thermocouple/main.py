@@ -5,17 +5,15 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-
-print('stack light board test code')
-print('v1.0')
+print('thermocouple board')
+print('v1.00p')
 print('initializing')
-this_id = 900
+this_id = 1300
 print(this_id)
 broadcast_state = False
 subscriptions = {}
 
-
-# Setup standard components
+# Set up standard components
 upython.freq(240000000)
 hbt_led = Pin(5, Pin.OUT, value=0)
 
@@ -26,20 +24,9 @@ neo_status = NeoPixel(neo_status_pin, 1)
 neo_status[0] = (0, 0, 0)
 neo_status.write()
 
-
-
-
-white_led = Pin(25, Pin.OUT, value=0)
-blue_led = Pin(26, Pin.OUT, value=0)
-green_led = Pin(27, Pin.OUT, value=0)
-yellow_led = Pin(14, Pin.OUT, value=0)
-red_led = Pin(12, Pin.OUT, value=0)
-buzzer = Pin(32, Pin.OUT, value=0)
-
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
-# Start CAN
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
@@ -67,11 +54,24 @@ class Button:
             if broadcast_state:
                 can.send([not self.state], self.can_id)
 
-
-minus_button = Button('minus_button', 23, True, 50)
-plus_button = Button('plus_button', 33, True, 51)
-off_button = Button('off_button', 39, False, 52)
-buzz_button = Button('buzz_button', 22, True, 53)
+class Analog:
+    def __init__(self, name, pin, can_id):
+        self.name = name
+        print(self.name)
+        self.state = None
+        self.can_id = can_id + this_id
+        self.pin = ADC(Pin(pin))
+        self.pin.atten(ADC.ATTN_11DB)
+        self.pin.width(ADC.WIDTH_12BIT)
+        self.old = int(self.pin.read()/16)
+    def check(self):
+        self.state = int(self.pin.read()/16)
+        global broadcast_state
+        if abs(self.state - self.old) > 1:
+            self.old = self.state
+            print('{}: {} can_id: {}'.format(self.name, self.state, self.can_id))
+            if broadcast_state:
+                can.send([self.state], self.can_id)
 
 class Operator:
     def __init__(self, name, can_id, broadcast_id):
@@ -94,13 +94,99 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
-# Setup hbt timer
+
+a_button = Button('a_button', 25, True, 50)
+b_button = Button('b_button', 26, True, 51)
+c_button = Button('c_button', 15, True, 52)
+
+
+input_a = Button('input_a', 32, True, 53)
+input_b = Button('input_b', 33, True, 54)
+
+#pot_a = Analog('a_pot', 32, 57)
+# pot_b = Analog('b_pot', 35, 58)
+#
+output_a = Pin(23, Pin.OUT, value=0)
+output_b = Pin(22, Pin.OUT, value=0)
+# led_2 = Pin(19, Pin.OUT, value=0)
+# led_3 = Pin(21, Pin.OUT, value=0)
+
+class MAX6675():
+    def __init__(self, so_pin=19, cs_pin=21, sck_pin=18):
+        self.cs = Pin(cs_pin, Pin.OUT)
+        self.so = Pin(so_pin, Pin.IN)
+        self.sck = Pin(sck_pin, Pin.OUT)
+
+        self.cs.on()
+        self.so.off()
+        self.sck.off()
+
+        self.last_read_time = utime.ticks_ms()
+        self.read_delay_ms = 500
+        self.next_read_time = utime.ticks_ms()
+        self.previous = None
+        self.state = self.readCelsius()
+        self.can_id = this_id + 50
+        utime.sleep_ms(500)
+
+    def readFahrenheit(self):
+        return self.readCelsius() * 9.0 / 5.0 + 32
+
+    def readCelsius(self):
+        data = self.__read_data()
+        volts = sum([b * (1 << i) for i, b in enumerate(reversed(data))])
+        # print(volts)
+
+        return volts * 0.25
+
+    def __read_data(self):
+        # CS down, read bytes then cs up
+        self.cs.off()
+        utime.sleep_us(10)
+        data = self.__read_word() # (self.__read_byte() << 8) | self.__read_byte()
+        self.cs.on()
+
+        # print(data)
+        # print(data[1:-3])
+
+        if data[-3] == 1:
+            print('no thermocouple')
+            # raise NoThermocoupleAttached()
+
+        return data[1:-3]
+
+    def __read_word(self):
+        return [self.__read_bit() for _ in range(16)]
+
+
+    def __read_bit(self):
+        self.sck.off()
+        utime.sleep_us(10)
+        bit = self.so.value()
+        self.sck.on()
+        utime.sleep_us(10)
+        return bit
+
+    def check(self):
+        now = utime.ticks_ms()
+        if utime.ticks_diff(self.next_read_time, now) <= 0:
+            self.state = int(self.readCelsius())
+            if not self.previous == self.state:
+                print('temp is {} deg C'.format(self.state))
+                self.previous = self.state
+                if broadcast_state:
+                    can.send([self.state], self.can_id)
+            self.next_read_time = utime.ticks_add(self.next_read_time, self.read_delay_ms)
+
+
+therm = MAX6675()
+
+# Set up hbt timer
 hbt_state = 0
-hbt_interval = 900
+hbt_interval = 500
 start = utime.ticks_ms()
 next_hbt = utime.ticks_add(start, hbt_interval)
 hbt_led.value(hbt_state)
-
 
 def chk_hbt():
     global next_hbt
@@ -117,27 +203,20 @@ def chk_hbt():
 
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
-
 def this_show():
-    red_led.value(1)
+    print('doing show')
+    led_0.value(1)
     utime.sleep_ms(300)
-    yellow_led.value(1)
+    led_1.value(1)
     utime.sleep_ms(300)
-    green_led.value(1)
+    led_2.value(1)
     utime.sleep_ms(300)
-    blue_led.value(1)
+    led_3.value(1)
     utime.sleep_ms(300)
-    white_led.value(1)
-    utime.sleep_ms(300)
-    buzzer.value(1)
-    utime.sleep_ms(300)
-    red_led.value(0)
-    yellow_led.value(0)
-    green_led.value(0)
-    blue_led.value(0)
-    white_led.value(0)
-    buzzer.value(0)
-
+    led_0.value(0)
+    led_1.value(0)
+    led_2.value(0)
+    led_3.value(0)
 
 def light_show():
     neo_status[0] = (0, 33, 0)
@@ -151,7 +230,6 @@ def light_show():
     utime.sleep_ms(250)
     neo_status[0] = (0, 0, 0)
     neo_status.write()
-
 
 def broadcast(state):
     if state:
@@ -200,19 +278,10 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 99:
-        buzzer.value(buf[0])
-    elif id == 98:
-        white_led.value(buf[0])
-    elif id == 97:
-        blue_led.value(buf[0])
-    elif id == 96:
-        green_led.value(buf[0])
-    elif id == 95:
-        yellow_led.value(buf[0])
-    elif id == 94:
-        red_led.value(buf[0])
-
+    elif id == 90:
+        output_a.value(buf[0])
+    elif id == 91:
+        output_b.value(buf[0])
 
     else:
         print('unknown command')
@@ -229,7 +298,9 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
-    minus_button.check()
-    plus_button.check()
-    buzz_button.check()
-    off_button.check()
+    a_button.check()
+    b_button.check()
+    c_button.check()
+    input_a.check()
+    input_b.check()
+    therm.check()
