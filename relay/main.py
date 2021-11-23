@@ -65,8 +65,11 @@ class Button:
 
 # Set up peripherals
 
-button_1 = Button('button_1', 33, True, 50)
-button_2 = Button('button_2', 32, True, 51)
+button_1 = Button('button_1', 26, True, 50)
+button_2 = Button('button_2', 25, True, 51)
+button_3 = Button('button_3', 33, True, 53)
+button_4 = Button('button_4', 32, True, 54)
+
 
 relay_1 = Pin(22, Pin.OUT, value=0)
 relay_2 = Pin(21, Pin.OUT, value=0)
@@ -109,6 +112,22 @@ def chk_hbt():
             hbt_led.value(hbt_state)
 
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
+
+def this_show():
+    relay_1.value(1)
+    utime.sleep_ms(300)
+    relay_2.value(1)
+    utime.sleep_ms(300)
+    relay_3.value(1)
+    utime.sleep_ms(300)
+    relay_4.value(1)
+    utime.sleep_ms(300)
+    relay_1.value(0)
+    relay_2.value(0)
+    relay_3.value(0)
+    relay_4.value(0)
+
+
 
 def light_show():
     neo_status[0] = (0, 33, 0)
@@ -204,3 +223,5 @@ while True:
 
     button_1.check()
     button_2.check()
+    button_3.check()
+    button_4.check()

@@ -16,7 +16,7 @@ this_id = 700
 print('device id' + str(this_id))
 broadcast_state = False
 self_broadcast = this_id + 50
-
+subscriptions = {}
 
 # Setup standard components
 hbt_led = Pin(5, Pin.OUT, value=0)
@@ -31,7 +31,7 @@ can_slp.value(0)
 
 # Start CAN
 can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.LOOPBACK, baudrate=250000)
-subscriptions = {}
+
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
 
@@ -39,6 +39,7 @@ mess = [0, 0, 0, memoryview(buf)]
 print(machine.freq())
 machine.freq(240000000)
 print(machine.freq())
+
 
 dac = Pin(25, Pin.OUT, value=0)
 #Setup LCD
@@ -86,8 +87,56 @@ left_button = Button('left_button', 26, True, 54)
 right_button = Button('right_button', 32, True, 55)
 
 
+class Operator:
+    def __init__(self, name, can_id, broadcast_id):
+        self.name = name
+        self.latch = False
+        self.can_id = can_id
+        self.broadcast_id = this_id + broadcast_id
+        print('{} initialized on can_id {}'.format(self.name, self.can_id))
+        pass
+    def _latch(self, switch):
+        # global buf
+        if switch == 1:
+            self.latch = not self.latch
+            if self.latch:
+                buf[0] = 1
+            else:
+                buf[0] = 0
+            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
+            if self.can_id + 1 + this_id in subscriptions:
+                process(subscriptions[self.broadcast_id])
+operator = Operator('_latch', 40, 41)
 
+class LCD:
+    def __init__(self):
+        self.interval = 200
+        self.start = utime.ticks_ms()
+        self.next_update = utime.ticks_add(self.start, self.interval)
+        self.lcd_0_0 = ''
+        self.lcd_0_1 = ''
+        self.lcd_1_0 = ''
+        self.lcd_1_1 = ''
+        self.line_0 = ''
+        self.line_1 = ''
+        self.text = ''
 
+    def check(self):
+        now = utime.ticks_ms()
+        if utime.ticks_diff(self.next_update, now) <= 0:
+            self.update()
+            self.next_update = utime.ticks_add(self.next_update, self.interval)
+
+    def update(self):
+        self.line_0 = lcd_0_0 + lcd_0_1
+        lcd.move_to(0,0)
+        lcd.putstr(self.line_0)
+
+        self.line_1 = lcd_1_0 + lcd_1_1
+        lcd.move_to(0,1)
+        lcd.putstr(self.line_1)
+
+_lcd = LCD()
 
 # Setup hbt timer
 hbt_state = 0
@@ -186,11 +235,18 @@ def process(id):
             text += str(int(buf[byte])) + ','
         lcd.putstr(text)
 
+
+
     else:
         print('unknown command')
 
+
+
+
+light_show()
 while True:
     chk_hbt()
+    _lcd.check()
     if not func_button.value():
         print('function button pressed')
         broadcast_state = not broadcast_state

@@ -1,0 +1,431 @@
+{"command": "feed.feeder", "val": 7, "comment": ".1uF 100V, C1"}
+{"command": "sleep", "val": 4}
+{"command": "move.linear", "x": 183.6, "y": 90.952, "a": 0, "feed": 15000}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 2, "comment": ".1uF, C2"}
+{"command": "move.linear", "x": 286.728, "y": 306.152, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 347.8, "y": 90.352, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 5, "comment": "4.7uF 100V, C3"}
+{"command": "move.linear", "x": 283.523, "y": 300.322}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 250.1, "y": 91.252}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 7, "comment": ".1uF 100V, C4"}
+{"command": "move.linear", "x": 289.63, "y": 306.312, "a": 90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 183.6, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 2, "comment": ".1uF, C5"}
+{"command": "move.linear", "x": 289.65, "y": 302.389, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 347.8, "y": 90.352, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 6, "comment": "22uF, C6"}
+{"command": "move.linear", "x": 283.77, "y": 311.385, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 216.1, "y": 90.452, "a": 0}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 6, "comment": "22uF, C7"}
+{"command": "move.linear", "x": 281.91, "y": 311.445, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 216.1, "y": 90.452, "a": 0}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 2, "comment": ".1uF, C9"}
+{"command": "move.linear", "x": 293.54, "y": 328.94, "a": 90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 347.8, "y": 90.352, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 2, "comment": ".1uF, C10"}
+{"command": "move.linear", "x": 321.7, "y": 314.63, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 347.8, "y": 90.352, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 6, "comment": "22uF, C11"}
+{"command": "move.linear", "x": 291.373, "y": 316.732}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 216.1, "y": 90.452}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 6, "comment": "22uF, C13"}
+{"command": "move.linear", "x": 291.538, "y": 318.692}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 216.1, "y": 90.452}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 2, "comment": ".1uF, C14"}
+{"command": "move.linear", "x": 291.528, "y": 320.762}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 347.8, "y": 90.352}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 6, "comment": "22uF, C15"}
+{"command": "move.linear", "x": 322.413, "y": 311.052, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 216.1, "y": 90.452, "a": 0}
+{"command": "move.linear", "z": 1.8}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D3"}
+{"command": "move.linear", "x": 326.213, "y": 311.052}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D4"}
+{"command": "move.linear", "x": 322.653, "y": 318.182, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D8"}
+{"command": "move.linear", "x": 297.25, "y": 334.302}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D9"}
+{"command": "move.linear", "x": 292.51, "y": 299.382}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D11"}
+{"command": "move.linear", "x": 297.288, "y": 349.752}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D13"}
+{"command": "move.linear", "x": 297.288, "y": 364.302}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D14"}
+{"command": "move.linear", "x": 311.548, "y": 358.502, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 4, "comment": "led_g, D15"}
+{"command": "move.linear", "x": 311.788, "y": 374.802, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 281.8, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 2}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R1"}
+{"command": "move.linear", "x": 311.5, "y": 343.302, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 3, "comment": "82k, R2"}
+{"command": "move.linear", "x": 286.11, "y": 299.6, "a": 90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 314.9, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R3"}
+{"command": "move.linear", "x": 283.523, "y": 298.772}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R4"}
+{"command": "move.linear", "x": 317.76, "y": 321.982, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R5"}
+{"command": "move.linear", "x": 297.25, "y": 336.052}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R6"}
+{"command": "move.linear", "x": 326.358, "y": 318.212, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 3, "comment": "82k, R7"}
+{"command": "move.linear", "x": 293.61, "y": 325.47, "a": -90.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 314.9, "y": 90.952, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R8"}
+{"command": "move.linear", "x": 289.348, "y": 299.392}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R9"}
+{"command": "move.linear", "x": 301.288, "y": 342.302}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R10"}
+{"command": "move.linear", "x": 297.325, "y": 351.502}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R11"}
+{"command": "move.linear", "x": 301.25, "y": 358.252}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R12"}
+{"command": "move.linear", "x": 297.288, "y": 366.052}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R13"}
+{"command": "move.linear", "x": 301.25, "y": 372.552}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R14"}
+{"command": "move.linear", "x": 311.538, "y": 360.252, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R15"}
+{"command": "move.linear", "x": 307.788, "y": 352.002, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R16"}
+{"command": "move.linear", "x": 311.788, "y": 373.052, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R17"}
+{"command": "move.linear", "x": 307.825, "y": 366.552, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "feed.feeder", "val": 1, "comment": "10k, R18"}
+{"command": "move.linear", "x": 311.5, "y": 345.052, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 380.9, "y": 90.752, "a": 0}
+{"command": "move.linear", "z": 2.3}
+{"command": "suction", "val": 1}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16}
+{"command": "move.linear", "x": 307.5, "y": 336.552, "a": 180.0}
+{"command": "move.linear", "z": 0}
+{"command": "suction", "val": 0}
+{"command": "sleep", "val": 1}
+{"command": "move.linear", "z": 16, "comment": "part placed moving z"}
+{"command": "move.linear", "x": 50, "y": 350, "feed": 5000, "comment": "go home"}

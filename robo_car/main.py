@@ -5,16 +5,43 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-print('joypad board')
-print('v1.1')
+print('robo car board')
+print('v1.00p')
 print('initializing')
-this_id = 1200
+this_id = 1500
 print(this_id)
 broadcast_state = False
 subscriptions = {}
 
+
+
 # Set up standard components
 upython.freq(240000000)
+
+MOTOR_DUTY = 700
+
+motor_a_1 = PWM(Pin(33), freq=15000, duty=0)
+motor_a_2 = PWM(Pin(25), freq=15000, duty=0)
+motor_b_1 = PWM(Pin(13), freq=15000, duty=0)
+motor_b_2 = PWM(Pin(18), freq=15000, duty=0)
+motor_c_1 = PWM(Pin(26), freq=15000, duty=0)
+motor_c_2 = PWM(Pin(27), freq=15000, duty=0)
+motor_d_1 = PWM(Pin(12), freq=15000, duty=0)
+motor_d_2 = PWM(Pin(14), freq=15000, duty=0)
+
+utime.sleep_ms(100)
+motor_a_1.duty(0)
+motor_a_2.duty(0)
+motor_b_1.duty(0)
+motor_b_2.duty(0)
+motor_c_1.duty(0)
+motor_c_2.duty(0)
+motor_d_1.duty(0)
+motor_d_2.duty(0)
+
+
+
+
 hbt_led = Pin(5, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
@@ -24,17 +51,6 @@ neo_status = NeoPixel(neo_status_pin, 1)
 neo_status[0] = (0, 0, 0)
 neo_status.write()
 
-
-neo_bar_pin = Pin(12, Pin.OUT)
-neo_bar = NeoPixel(neo_bar_pin, 5)
-
-def set_bar(r,g,b):
-    for i in range(5):
-        neo_bar[i] = (r, g, b)
-    neo_bar.write()
-
-set_bar(0,0,0)
-
 can_slp = Pin(2, Pin.OUT, value=0)
 can_slp.value(0)
 
@@ -42,6 +58,16 @@ can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
+
+
+neo_bar_pin = Pin(15, Pin.OUT)
+neo_bar = NeoPixel(neo_bar_pin, 5)
+def set_bar(r,g,b):
+    for i in range(5):
+        neo_bar[i] = (r, g, b)
+    neo_bar.write()
+
+set_bar(0,0,0)
 
 class Button:
     def __init__(self, name, pin, pull_up, can_id):
@@ -105,23 +131,56 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
-green_button = Button('green_button', 25, True, 50)
-red_button = Button('red_button', 26, True, 51)
-blue_button = Button('blue_button', 27, True, 52)
-yellow_button = Button('yellow_button', 33, True, 53)
-start_button = Button('start_button', 13, True, 54)
-select_button = Button('select_button', 15, True, 55)
-up_button = Button('up_button', 21, True, 56)
-down_button = Button('down_button', 23, True, 57)
-left_button = Button('left_button', 19, True, 58)
-right_button = Button('right_button', 22, True, 59)
-l_joy_push = Button('l_joy_push', 18, True, 60)
-r_joy_push = Button('r_joy_push', 14, True, 61)
 
-l_joy_x = Analog('L_X', 35, 62)
-l_joy_y = Analog('L_Y', 32, 63)
-r_joy_x = Analog('R_X', 34, 64)
-r_joy_y = Analog('R_Y', 39, 65)
+
+
+
+class Motor:
+    def __init__(self, name, f, r, duty):
+        self.name = name
+        self.f = f
+        self.r = r
+        self.duty = duty
+
+    def forward(self):
+        self.f.duty(self.duty)
+        self.r.duty(0)
+
+    def reverse(self):
+        self.f.duty(0)
+        self.r.duty(self.duty)
+
+    def stop(self):
+        self.f.duty(0)
+        self.r.duty(0)
+
+motor_a = Motor('motor_a', motor_a_1, motor_a_2, MOTOR_DUTY)
+motor_b = Motor('motor_b', motor_b_1, motor_b_2, MOTOR_DUTY)
+motor_c = Motor('motor_c', motor_c_1, motor_c_2, MOTOR_DUTY)
+motor_d = Motor('motor_d', motor_d_1, motor_d_2, MOTOR_DUTY)
+
+
+# a_button = Button('a_button', 23, True, 50)
+# b_button = Button('b_button', 22, True, 51)
+# up = Button('up button', 25, True, 52)
+# down = Button('down_button', 27, True, 53)
+# left = Button('left_button', 33, True, 54)
+# right = Button('right_button', 26, True, 55)
+# push = Button('push_button', 32, True, 56)
+#
+analog_a = Analog('analog_a', 39, 50)
+analog_b = Analog('analog_b', 35, 51)
+analog_c = Analog('analog_c', 34, 52)
+analog_d = Analog('analog_d', 32, 53)
+
+input_a = Button('input_a', 21, True, 54)
+input_b = Button('input_b', 22, True, 55)
+input_c = Button('input_c', 19, True, 56)
+input_d = Button('input_d', 23, True, 57)
+
+
+
+
 
 # Set up hbt timer
 hbt_state = 0
@@ -145,6 +204,9 @@ def chk_hbt():
 
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
+
+
+
 def this_show():
     set_bar(0, 33, 0)
     utime.sleep_ms(250)
@@ -156,18 +218,17 @@ def this_show():
 
 
 def light_show():
-    neo_bar[0] = (0, 33, 0)
-    neo_bar.write()
+    neo_status[0] = (0, 33, 0)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (0, 0, 33)
-    neo_bar.write()
+    neo_status[0] = (0, 0, 33)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (33, 0, 0)
-    neo_bar.write()
+    neo_status[0] = (33, 0, 0)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (0, 0, 0)
-    neo_bar.write()
-
+    neo_status[0] = (0, 0, 0)
+    neo_status.write()
 
 def broadcast(state):
     if state:
@@ -216,8 +277,50 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 79:
-        this_show()
+    elif id == 90:
+        if buf[0] == 1:
+            motor_a.forward()
+        else:
+            motor_a.stop()
+    elif id == 91:
+        if buf[0] == 1:
+            motor_a.reverse()
+        else:
+            motor_a.stop()
+
+    elif id == 92:
+        if buf[0] == 1:
+            motor_b.forward()
+        else:
+            motor_b.stop()
+    elif id == 93:
+        if buf[0] == 1:
+            motor_b.reverse()
+        else:
+            motor_b.stop()
+
+    elif id == 94:
+        if buf[0] == 1:
+            motor_c.forward()
+        else:
+            motor_c.stop()
+    elif id == 95:
+        if buf[0] == 1:
+            motor_c.reverse()
+        else:
+            motor_c.stop()
+
+    elif id == 96:
+        if buf[0] == 1:
+            motor_d.forward()
+        else:
+            motor_d.stop()
+    elif id == 97:
+        if buf[0] == 1:
+            motor_d.reverse()
+        else:
+            motor_d.stop()
+
     else:
         print('unknown command')
 
@@ -233,20 +336,12 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
-    up_button.check()
-    select_button.check()
-    start_button.check()
-    yellow_button.check()
-    blue_button.check()
-    red_button.check()
-    green_button.check()
-    down_button.check()
-    left_button.check()
-    right_button.check()
-    l_joy_push.check()
-    r_joy_push.check()
+    # analog_a.check()
+    # analog_b.check()
+    # analog_c.check()
+    # analog_d.check()
 
-    l_joy_y.check()
-    l_joy_x.check()
-    r_joy_y.check()
-    r_joy_x.check()
+    input_a.check()
+    input_b.check()
+    input_c.check()
+    input_d.check()
