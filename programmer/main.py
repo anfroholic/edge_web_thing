@@ -6,12 +6,13 @@
 
 import utime
 from machine import Pin, CAN, ADC
-import machine
+import machine as upython
 import network
 from neopixel import NeoPixel
 import esp
 esp.osdebug(None)
 import uasyncio as asyncio
+import struct
 
 import gc
 gc.collect()

@@ -5,11 +5,11 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-print('mosfet board')
+print('3d printhead board')
 print('v1.00p')
 print('initializing')
-this_id = 1100
-print(this_id)
+this_id = 1400
+print('this id' + str(this_id))
 broadcast_state = False
 subscriptions = {}
 
@@ -95,18 +95,17 @@ class Operator:
 operator = Operator('_latch', 40, 41)
 
 
+input_1 = Button('input_1', 23, True, 52)
+input_2 = Button('input_2', 22, True, 53)
+probe = Button('input_2', 22, True, 54)
+
+analog_1 = Analog('analog_1', 34, 50)
+thermister = Analog('thermister', 39, 51)
+
+heater = Pin(22, Pin.OUT, value=0)
+fan = Pin(23, Pin.OUT, value=0)
 
 
-output_1 = Pin(19, Pin.OUT, value=0)
-output_2 = Pin(18, Pin.OUT, value=0)
-output_3 = Pin(25, Pin.OUT, value=0)
-output_4 = PWM(Pin(21), freq=20000)
-output_5 = PWM(Pin(22), freq=20000)
-output_6 = PWM(Pin(23), freq=20000)
-utime.sleep_ms(3)
-output_4.duty(0)
-output_5.duty(0)
-output_6.duty(0)
 
 # Set up hbt timer
 hbt_state = 0
@@ -131,24 +130,19 @@ def chk_hbt():
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
 def this_show():
-    output_1.value(1)
+    print('doing show')
+    led_0.value(1)
     utime.sleep_ms(300)
-    output_2.value(1)
+    led_1.value(1)
     utime.sleep_ms(300)
-    output_3.value(1)
+    led_2.value(1)
     utime.sleep_ms(300)
-    output_4.value(1)
+    led_3.value(1)
     utime.sleep_ms(300)
-    output_5.value(1)
-    utime.sleep_ms(300)
-    output_6.value(1)
-    utime.sleep_ms(300)
-    output_1.value(0)
-    output_2.value(0)
-    output_3.value(0)
-    output_4.value(0)
-    output_5.value(0)
-    output_6.value(0)
+    led_0.value(0)
+    led_1.value(0)
+    led_2.value(0)
+    led_3.value(0)
 
 def light_show():
     neo_status[0] = (0, 33, 0)
@@ -210,24 +204,16 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 79:
-        this_show()
     elif id == 91:
-        output_1.value(buf[0])
+        heater.value(buf[0])
     elif id == 92:
-        output_2.value(buf[0])
-    elif id == 93:
-        output_3.value(buf[0])
-    elif id == 94:
-        output_4.duty(buf[0]*4)
-    elif id == 95:
-        output_5.duty(buf[0]*4)
-    elif id == 96:
-        output_6.duty(buf[0]*4)
+        fan.value(buf[0])
+
 
     else:
         print('unknown command')
 
+light_show()
 while True:
     chk_hbt()
 
@@ -239,3 +225,9 @@ while True:
         broadcast_state = not broadcast_state
         broadcast(broadcast_state)
         utime.sleep_ms(200)
+
+    input_1.check()
+    input_2.check()
+    # probe.check()
+    # analog_1.check()
+    # thermister.check()

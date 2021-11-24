@@ -110,7 +110,7 @@ operator = Operator('_latch', 40, 41)
 
 class LCD:
     def __init__(self):
-        self.interval = 200
+        self.interval = 5000
         self.start = utime.ticks_ms()
         self.next_update = utime.ticks_add(self.start, self.interval)
         self.lcd_0_0 = ''
@@ -128,11 +128,23 @@ class LCD:
             self.next_update = utime.ticks_add(self.next_update, self.interval)
 
     def update(self):
-        self.line_0 = lcd_0_0 + lcd_0_1
+        self.line_0 = ''
+        self.line_0 += self.lcd_0_0
+        self.line_0 += self.lcd_0_1
+        if len(self.line_0) > 16:
+            self.line_0[:16]
+        if len(self.line_0) < 16:
+            for i in range(16 - len(self.line_0)):
+                self.line_0 += ' '
         lcd.move_to(0,0)
         lcd.putstr(self.line_0)
 
-        self.line_1 = lcd_1_0 + lcd_1_1
+        self.line_1 = ''
+        self.line_1 += self.lcd_1_0
+        self.line_1 += self.lcd_1_1
+        if len(self.line_1) < 16:
+            for i in range(16 - len(self.line_1)):
+                self.line_1 += ' '
         lcd.move_to(0,1)
         lcd.putstr(self.line_1)
 
@@ -191,6 +203,7 @@ def send(mess, id):
 
 def get():
     can.recv(mess)
+    print(mess)
     if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
         process(mess[0]%100)
     if mess[0] in subscriptions:
@@ -198,6 +211,11 @@ def get():
     # print(str(mess[0]) + ', ' + str(buf[0]))
 
     # these are messages for all boards
+def clear_buf():
+    global buf
+    for i in range(8):
+        buf[i] = 0
+
 def process(id):
     print(id)
     if id == 1:
@@ -221,6 +239,56 @@ def process(id):
         sub = struct.unpack('II', buf)
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
+        #clear_buf()
+
+    elif id == 91:
+        print(buf)
+        length = 0
+        for i in range(len(buf)):
+            print(buf[i])
+            if buf[i] != 0:
+                length += 1
+            else:
+                break
+        s = "{}s".format(str(length))
+        st = struct.unpack(s, buf)
+        _lcd.lcd_0_0 = st[0].decode('ascii')
+        _lcd.update()
+        clear_buf()
+
+    elif id == 92:
+        print(buf)
+        this = struct.unpack('B', buf)
+        print(this[0])
+        _lcd.lcd_0_1 = str(this[0])
+        _lcd.update()
+        clear_buf()
+
+    elif id == 93:
+        print(buf)
+        length = 0
+        for i in range(len(buf)):
+            print(buf[i])
+            if buf[i] != 0:
+                length += 1
+            else:
+                break
+
+        s = "{}s".format(str(length))
+        print(s)
+        st = struct.unpack(s, buf)
+        print(st)
+        _lcd.lcd_1_0 = st[0].decode('ascii')
+        _lcd.update()
+        clear_buf()
+
+    elif id == 94:
+        print(buf)
+        this = struct.unpack('B', buf)
+        print(this[0])
+        _lcd.lcd_1_1 = str(this[0])
+        _lcd.update()
+        clear_buf()
 
     elif id == 99:
         lcd.move_to(0,0)
@@ -228,12 +296,14 @@ def process(id):
         for byte in range(8):
             text += str(int(buf[byte])) + ','
         lcd.putstr(text)
+        clear_buf()
     elif id == 98:
         lcd.move_to(0,1)
         text = ''
         for byte in range(8):
             text += str(int(buf[byte])) + ','
         lcd.putstr(text)
+        clear_buf()
 
 
 
