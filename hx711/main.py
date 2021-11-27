@@ -24,6 +24,8 @@ func_button = Pin(36, Pin.IN) # Has external pullup
 
 neo_status_pin = Pin(17, Pin.OUT)
 neo_status = NeoPixel(neo_status_pin, 1)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
 
 a_button = Pin(21, Pin.IN, Pin.PULL_UP)
 b_button = Pin(22, Pin.IN, Pin.PULL_UP)
@@ -132,6 +134,7 @@ def process(id):
     elif id == 97:
         scale.tare()
 
+light_show()
 while True:
     chk_hbt()
 

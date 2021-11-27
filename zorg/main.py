@@ -24,34 +24,68 @@ port = 80
 networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 
-test_prog = [
+test_prog1 = [
 [752, 690], # lcd button -> relay
 [753, 691], # lcd button -> relay
 [754, 692], # lcd button -> relay
 [755, 693], # lcd button -> relay
-[850, 799], # load cell -> lcd screen
+[850, 794], # load cell -> lcd screen
 [850, 491], # load cell -> servo
-[557, 798], # dpad pot -> lcd screen
+[1350, 792], # dpad pot -> lcd screen
 [557, 492], # dpad pot -> servo
 [558, 493], # dpad pot -> servo
 [552, 994], # dpad up -> red stack
 [553, 996], # dpad down -> green stack
 [556, 999], # dpad push -> stack beeper
 [941, 995], # stack latch -> self yellow
-[550, 940],  # dpad_a -> stack latch
+[550, 995],  # dpad_a -> stack yellow
 [1251, 940],  # joy yellow -> stack latch
 [1250, 996], # joy green -> green stack
 [1253, 994], # joy red -> red stack
+[1252, 999],
 [1262, 495], # joy X -> servo
 [1263, 496], # joy y -> servo
 [1264, 497], # joy X -> servo
 [1265, 498], # joy y -> servo
 [1252, 1191], # joy blue -> mosfet 1
 [1256, 1090], # joy up -> analog out1
-[1258, 1091], # joy up -> analog out1
-[1257, 1092], # joy up -> analog out1
-[1259, 1192], # joy up -> analog out1
-[1254, 1193] # joy up -> analog out1
+[1258, 1091], # joy left -> analog out1
+[1257, 1092], # joy down -> analog out2
+[1259, 690], # joy right -> mosfet 1
+[1254, 1191], # joy start -> analog out1
+[1255, 691]
+]
+
+test_prog2 = [
+[752, 690], # lcd button -> relay
+[753, 691], # lcd button -> relay
+[754, 692], # lcd button -> relay
+[755, 693], # lcd button -> relay
+[850, 798], # load cell -> lcd screen
+[850, 491], # load cell -> servo
+[557, 799], # dpad pot -> lcd screen
+[557, 492], # dpad pot -> servo
+[558, 493], # dpad pot -> servo
+[552, 994], # dpad up -> red stack
+[553, 996], # dpad down -> green stack
+[556, 999], # dpad push -> stack beeper
+[941, 995], # stack latch -> self yellow
+[550, 995],  # dpad_a -> stack yellow
+[1251, 940],  # joy yellow -> stack latch
+[1250, 996], # joy green -> green stack
+[1253, 994], # joy red -> red stack
+[1252, 999],
+[1262, 495], # joy X -> servo
+[1263, 496], # joy y -> servo
+[1264, 497], # joy X -> servo
+[1265, 498], # joy y -> servo
+[1252, 1191], # joy blue -> mosfet 1
+[1256, 1090], # joy up -> analog out1
+[1258, 1091], # joy left -> analog out1
+[1257, 1092], # joy down -> analog out2
+[1259, 690], # joy right -> mosfet 1
+[1254, 1191], # joy start -> analog out1
+[1255, 691]
 ]
 
 connections = ''
@@ -83,10 +117,6 @@ can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
 
-sd_init = False
-cmd = Pin(15, Pin.PULL_UP)
-sk = Pin(12, Pin.PULL_UP)
-s1k = Pin(13, Pin.PULL_UP)
 
 
 class Button:
@@ -151,11 +181,15 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
+a_button = Pin(32, Pin.IN, Pin.PULL_UP)
+b_button = Pin(32, Pin.IN, Pin.PULL_UP)
+c_button = Pin(32, Pin.IN, Pin.PULL_UP)
+d_button = Pin(32, Pin.IN, Pin.PULL_UP)
 
-a_button = Button('a_button', 32, True, 50)
-b_button = Button('b_button', 26, True, 51)
-c_button = Button('c_button', 19, True, 52)
-d_button = Button('d_button', 23, True, 53)
+# a_button = Button('a_button', 32, True, 50)
+# b_button = Button('b_button', 26, True, 51)
+# c_button = Button('c_button', 19, True, 52)
+# d_button = Button('d_button', 23, True, 53)
 # sd_detect = Pin(18, Pin.IN, Pin.PULL_UP)
 sd_detect = Button('sd_detect', 18, True, 54)
 
@@ -165,27 +199,6 @@ led_c = Pin(21, Pin.OUT, value=0)
 led_d = Pin(22, Pin.OUT, value=0)
 
 
-# Set up hbt timer
-# hbt_state = 0
-# hbt_interval = 500
-# start = utime.ticks_ms()
-# next_hbt = utime.ticks_add(start, hbt_interval)
-# hbt_led.value(hbt_state)
-
-# def chk_hbt():
-#     global next_hbt
-#     global hbt_state
-#     now = utime.ticks_ms()
-#     if utime.ticks_diff(next_hbt, now) <= 0:
-#         if hbt_state == 1:
-#             hbt_state = 0
-#             hbt_led.value(hbt_state)
-#             #print("hbt")
-#         else:
-#             hbt_state = 1
-#             hbt_led.value(hbt_state)
-#
-#         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
 #network
 if func_button.value():
@@ -230,6 +243,7 @@ else:
     wlan.config(max_clients=10) # set how many clients can connect to the network
     wlan.active(True)         # activate the interface
     my_ip = wlan.ifconfig()[0]
+    print(wlan.ifconfig())
 
 def web_page():
   global connections
@@ -325,11 +339,19 @@ async def buttons():
             broadcast_state = not broadcast_state
             broadcast(broadcast_state)
             await asyncio.sleep_ms(250)
-        a_button.check()
-        b_button.check()
-        c_button.check()
-        d_button.check()
-        await asyncio.sleep_ms(50)
+        if not a_button.value():
+                print('make demo 1')
+                demo_1()
+                await asyncio.sleep_ms(250)
+        if not b_button.value():
+                print('make demo 2')
+        if not c_button.value():
+                print('make demo 3')
+        # a_button.check()
+        # b_button.check()
+        # c_button.check()
+        # d_button.check()
+        await asyncio.sleep_ms(150)
 
 async def do_hbt():
     while True:
@@ -357,10 +379,22 @@ def send_can(request):
     can.send(_mess, arb_id)
 
 def demo_1():
-    for sub in test_prog:
-        make_sub(sub[0], sub[1])
-        utime.sleep_ms(2)
-    # TODO: make the words show on lcd here
+    global connections
+    neo_status[0] = (0, 0, 20)
+    neo_status.write()
+    if connections == '':
+        for sub in test_prog1:
+            make_sub(sub[0], sub[1])
+            utime.sleep_ms(25)
+        # TODO: make the words show on lcd here
+        utime.sleep_ms(25)
+        can.send([1], 4) #  broadcast
+        utime.sleep_ms(25)
+        can.send([84, 69, 77, 80, 58, 32], 791) # TEMP:
+        utime.sleep_ms(25)
+        can.send([87, 69, 73, 71, 72, 84, 58, 32], 793) # WEIGHT:
+    neo_status[0] = (0, 0, 0)
+    neo_status.write()
 
 def make_sub(sender, receiver):
     global connections
