@@ -95,13 +95,13 @@ class Operator:
 operator = Operator('_latch', 40, 41)
 
 
-a_button = Button('a_button', 25, True, 50)
-b_button = Button('b_button', 26, True, 51)
-c_button = Button('c_button', 15, True, 52)
+a_button = Button('a_button', 25, True, 51)
+b_button = Button('b_button', 26, True, 52)
+c_button = Button('c_button', 15, True, 53)
 
 
-input_a = Button('input_a', 32, True, 53)
-input_b = Button('input_b', 33, True, 54)
+input_a = Button('input_a', 32, True, 54)
+input_b = Button('input_b', 33, True, 55)
 
 #pot_a = Analog('a_pot', 32, 57)
 # pot_b = Analog('b_pot', 35, 58)
