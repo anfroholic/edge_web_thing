@@ -11,13 +11,13 @@ import struct
 import gc
 gc.collect()
 print('zorg board')
-print('v1.00p')
+print('v1.01p')
 print('initializing')
 this_id = 100
 print(this_id)
 broadcast_state = False
 subscriptions = {}
-
+connections = ''
 
 port = 80
 
@@ -88,7 +88,7 @@ test_prog2 = [
 [1255, 691]
 ]
 
-connections = ''
+
 
 
 
@@ -174,8 +174,10 @@ class Operator:
             self.latch = not self.latch
             if self.latch:
                 buf[0] = 1
+                can.send([1], self.broadcast_id)
             else:
                 buf[0] = 0
+                can.send([0], self.broadcast_id)
             print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
             if self.can_id + 1 + this_id in subscriptions:
                 process(subscriptions[self.broadcast_id])
@@ -214,7 +216,7 @@ if func_button.value():
     for i in range(len(aps)):
         station = aps[i][0].decode('ascii')
         if station in networks:
-            print('connecting to ' + station + ', '+ networks[station])
+            print('connecting to ' + station)
             wlan.connect(station, networks[station])
 
     neo_status[0] = (0, 0, 10)
@@ -263,19 +265,19 @@ def web_page():
     <h1>Evezor Web Interface</h1>
     <p>Connections:</p> <strong>""" + connections + """</strong>
 
-    <p><a href="/?led=off"><button class="button button2">neo off</button></a>          <a href="/?led=on"><button class="button">neo on</button></a></p>
+    <p><a href="/led=off"><button class="button button2">neo off</button></a>          <a href="/led=on"><button class="button">neo on</button></a></p>
 
     <p>
-    <a href="/?reset"><button class="button button3">reset</button></a>
-    <a href="/?light_show"><button class="button button3">light show</button></a>
-    <a href="/?broadcast"><button class="button button3">broadcast</button></a>
-    <a href="/?!broadcast"><button class="button button3">!broadcast</button></a>
-    <a href="/?demo_1"><button class="button button2">demo_1</button></a>
+    <a href="/reset"><button class="button button3">reset</button></a>
+    <a href="/light_show"><button class="button button3">light show</button></a>
+    <a href="/broadcast"><button class="button button3">broadcast</button></a>
+    <a href="/!broadcast"><button class="button button3">!broadcast</button></a>
+    <a href="/demo_1"><button class="button button2">demo_1</button></a>
     </p>
     <br><br>
     <p><strong>Send CAN Message</strong></p>
 
-    <form action="/can.php">
+    <form action="/can">
     <label for="send_arb">ARB:</label>
     <input type="text" id="send_arb" name="send_arb"><br><br>
     <label for="m0">m0:</label>
@@ -287,40 +289,41 @@ def web_page():
     <label for="m2">m2:</label>
     <input type="text" id="m2" name="m2"><br>
 
-
     <label for="m3">m3:</label>
     <input type="text" id="m3" name="m3"><br>
-
 
     <label for="m4">m4:</label>
     <input type="text" id="m4" name="m4"><br>
 
-
     <label for="m5">m5:</label>
     <input type="text" id="m5" name="m5"><br>
-
 
     <label for="m6">m6:</label>
     <input type="text" id="m6" name="m6"><br>
 
-
     <label for="m7">m7:</label>
     <input type="text" id="m7" name="m7"><br>
-    <input type="submit" value="Submit">
-    </form>
-    <br><br>
-    <p><strong>Create Subscriber</strong></p>
+    <input type="submit" value="Submit"></form>
 
-    <form action="/sub.php">
+    <br><br><p><strong>Create Subscriber</strong></p>
+
+    <form action="/sub">
     <label for="sub_num">Broadcast ID:</label>
     <input type="text" id="sub_num" name="sub_num"><br><br>
-
     <label for="send_id">Subscriber ID:</label>
     <input type="text" id="send_id" name="send_id"><br><br>
-
-
     <input type="submit" value="Submit">
     </form>
+
+
+    <br><br><p><strong>Upload Program</strong></p>
+
+    <form action="/prog">
+    <label for="prog">Program:</label>
+    <input type="text" id="prog" name="prog"><br><br>
+    <input type="submit" value="Submit">
+    </form>
+
     </body></html>"""
   return html
 
@@ -333,12 +336,12 @@ async def get_can():
 
 async def buttons():
     while True:
-        if not func_button.value():
-            global broadcast_state
-            print('function button pressed')
-            broadcast_state = not broadcast_state
-            broadcast(broadcast_state)
-            await asyncio.sleep_ms(250)
+        # if not func_button.value():
+        #     global broadcast_state
+        #     print('function button pressed')
+        #     broadcast_state = not broadcast_state
+        #     broadcast(broadcast_state)
+        #     await asyncio.sleep_ms(250)
         if not a_button.value():
                 print('make demo 1')
                 demo_1()
@@ -430,6 +433,13 @@ def parse_sub(request):
     # print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(_sub[1]), str(_sub[0])))
     # can.send(beer, board+49) # sub listener is on id 49
 
+def parse_program(action):
+    _prog = action.split('=')
+    prog = _prog[1]
+    while(len(prog) > 0):
+        make_sub(int(prog[:4]), int(prog[4:8]))
+        prog = prog[8:]
+
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
     # print(request)
@@ -441,26 +451,27 @@ async def handle_client(reader, writer):
         send_can(request)
     if request.find('/sub') == 4:
         parse_sub(request)
+    if request.find('/prog') == 4:
+        parse_program(action)
 
-    elif action == '/?led=on':
-        print('turn led on')
+    elif action == '/led=on':
         neo_status[0] = (0, 25, 0)
         neo_status.write()
-    elif action == '/?led=off':
-        print('turn led off')
+    elif action == '/led=off':
         neo_status[0] = (0, 0, 0)
         neo_status.write()
-    elif action == '/?reset':
+    elif action == '/reset':
+        # reset all boards
         global connections
         connections = ''
         can.send([1], 2)
-    elif action == '/?light_show':
+    elif action == '/light_show':
         can.send([1], 1)
-    elif action == '/?broadcast':
+    elif action == '/broadcast':
         can.send([1], 4)
-    elif action == '/?!broadcast':
+    elif action == '/!broadcast':
         can.send([0], 4)
-    elif action == '/?demo_1':
+    elif action == '/demo_1':
         demo_1()
 
     await writer.awrite(
@@ -475,7 +486,6 @@ async def handle_client(reader, writer):
     await writer.awrite(web_page())
     await writer.aclose()
     return True
-
 
 
 def broadcast(state):
