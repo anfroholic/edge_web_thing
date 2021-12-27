@@ -156,17 +156,17 @@ def this_show():
 
 
 def light_show():
-    neo_bar[0] = (0, 33, 0)
-    neo_bar.write()
+    neo_status[0] = (0, 33, 0)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (0, 0, 33)
-    neo_bar.write()
+    neo_status[0] = (0, 0, 33)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (33, 0, 0)
-    neo_bar.write()
+    neo_status[0] = (33, 0, 0)
+    neo_status.write()
     utime.sleep_ms(250)
-    neo_bar[0] = (0, 0, 0)
-    neo_bar.write()
+    neo_status[0] = (0, 0, 0)
+    neo_status.write()
 
 
 def broadcast(state):

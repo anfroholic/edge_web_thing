@@ -5,7 +5,7 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-print('mosfet board')
+print('mosfet board smithy')
 print('v1.00p')
 print('initializing')
 this_id = 1100
@@ -100,13 +100,9 @@ operator = Operator('_latch', 40, 41)
 output_1 = Pin(19, Pin.OUT, value=0)
 output_2 = Pin(18, Pin.OUT, value=0)
 output_3 = Pin(25, Pin.OUT, value=0)
-output_4 = PWM(Pin(21), freq=20000)
-output_5 = PWM(Pin(22), freq=20000)
-output_6 = PWM(Pin(23), freq=20000)
-utime.sleep_ms(3)
-output_4.duty(0)
-output_5.duty(0)
-output_6.duty(0)
+output_4 = Pin(19, Pin.OUT, value=0)
+output_5 = Pin(18, Pin.OUT, value=0)
+output_6 = Pin(25, Pin.OUT, value=0)
 
 # Set up hbt timer
 hbt_state = 0
@@ -212,6 +208,15 @@ def process(id):
 
     elif id == 79:
         this_show()
+    elif id == 81:  # spindle.on()
+        output_1.value(1)
+        utime.sleep_(1)
+        output_1.vaue(0)
+    elif id == 81:  # spindle.on()
+        output_1.value(1)
+        utime.sleep_(1)
+        output_1.vaue(0)
+
     elif id == 91:
         output_1.value(buf[0])
     elif id == 92:
@@ -219,11 +224,12 @@ def process(id):
     elif id == 93:
         output_3.value(buf[0])
     elif id == 94:
-        output_4.duty(buf[0]*4)
+        output_4.value(buf[0])
     elif id == 95:
-        output_5.duty(buf[0]*4)
+        output_5.value(buf[0])
     elif id == 96:
-        output_6.duty(buf[0]*4)
+        output_6.value(buf[0])
+
 
     else:
         print('unknown command')

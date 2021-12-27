@@ -23,6 +23,7 @@ port = 80
 
 networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
+
 test_prog1 = [
 [752, 690], # lcd button -> relay
 [753, 691], # lcd button -> relay
@@ -251,79 +252,73 @@ def web_page():
 
   html = """
 <html>
-    <head>
-        <title>Evezor Web Interface</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="data:,">
-        <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-  h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}.button{display: inline-block; background-color: #e7bd3b; border: none;
-  border-radius: 4px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
-  .button2{background-color: #4286f4;}.button3{background-color: #06876f;}</style>
-    </head>
-    <body>
-    <h1>Evezor Web Interface</h1>
-    <p>Connections:</p> <strong>""" + connections + """</strong>
-
-    <p><a href="/led=off"><button class="button button2">neo off</button></a>          <a href="/led=on"><button class="button">neo on</button></a></p>
-
-    <p>
-    <a href="/reset"><button class="button button3">reset</button></a>
-    <a href="/light_show"><button class="button button3">light show</button></a>
-    <a href="/broadcast"><button class="button button3">broadcast</button></a>
-    <a href="/!broadcast"><button class="button button3">!broadcast</button></a>
-    <a href="/demo_1"><button class="button button2">demo_1</button></a>
-    </p>
-    <br><br>
-    <p><strong>Send CAN Message</strong></p>
-
-    <form action="/can">
-    <label for="send_arb">ARB:</label>
-    <input type="text" id="send_arb" name="send_arb"><br><br>
-    <label for="m0">m0:</label>
-    <input type="text" id="m0" name="m0"><br>
-
-    <label for="m1">m1:</label>
-    <input type="text" id="m1" name="m1"><br>
-
-    <label for="m2">m2:</label>
-    <input type="text" id="m2" name="m2"><br>
-
-    <label for="m3">m3:</label>
-    <input type="text" id="m3" name="m3"><br>
-
-    <label for="m4">m4:</label>
-    <input type="text" id="m4" name="m4"><br>
-
-    <label for="m5">m5:</label>
-    <input type="text" id="m5" name="m5"><br>
-
-    <label for="m6">m6:</label>
-    <input type="text" id="m6" name="m6"><br>
-
-    <label for="m7">m7:</label>
-    <input type="text" id="m7" name="m7"><br>
-    <input type="submit" value="Submit"></form>
-
-    <br><br><p><strong>Create Subscriber</strong></p>
-
-    <form action="/sub">
-    <label for="sub_num">Broadcast ID:</label>
-    <input type="text" id="sub_num" name="sub_num"><br><br>
-    <label for="send_id">Subscriber ID:</label>
-    <input type="text" id="send_id" name="send_id"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-
-    <br><br><p><strong>Upload Program</strong></p>
-
-    <form action="/prog">
-    <label for="prog">Program:</label>
-    <input type="text" id="prog" name="prog"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-    </body></html>"""
+<head>
+  <title>ESP32 Web Server</title>
+</head>
+<!-------------------------------C S S------------------------------>
+<style>
+  #btn
+  {
+    display: inline-block;
+    text-decoration: none;
+    background: #8CD460;
+    color: rgba(255,255,255, 0.80);
+    font-weight: bold;
+    font: 60px arial, sans-serif;
+    width: 150px;
+    height: 150px;
+    line-height: 150px;
+    border-radius: 50%;
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    box-shadow: 0px 0px 0px 8px #8CD460;
+    border: solid 2px rgba(255,255,255, 0.47);
+    transition: 0.5s;
+  }
+  body {text-align:center; font-family:"Calibri"; background-color:rgba(0, 3, 8, 0.26)}
+  h1   {color: rgba(0, 0, 255, 0.87); font-size: 50px;}
+</style>
+<!------------------------------H T M L----------------------------->
+<body>
+   <h1>E S P 3 2<br>WebSocket Server</h1>
+   <a href="#" id="btn" ONCLICK='button()'> </a>
+<!-----------------------------JavaScript--------------------------->
+  <script>
+     InitWebSocket()
+     function InitWebSocket()
+     {
+       websock = new WebSocket('ws://'+window.location.hostname+':81/');
+       websock.onmessage = function(evt)
+       {
+          JSONobj = JSON.parse(evt.data);
+          document.getElementById('btn').innerHTML = JSONobj.LEDonoff;
+          if(JSONobj.LEDonoff == 'ON')
+          {
+            document.getElementById('btn').style.background='#FF0000';
+            document.getElementById('btn').style["boxShadow"] = "0px 0px 0px 8px #FF0000";
+          }
+          else
+          {
+            document.getElementById('btn').style.background='#111111';
+            document.getElementById('btn').style["boxShadow"] = "0px 0px 0px 8px #111111";
+          }
+       }
+     }
+     //-------------------------------------------------------------
+     function button()
+     {
+        btn = 'LEDonoff=ON';
+        if(document.getElementById('btn').innerHTML == 'ON')
+        {
+          btn = 'LEDonoff=OFF';
+        }
+        websock.send(btn);
+     }
+  </script>
+</body>
+</html>
+"""
   return html
 
 async def get_can():
@@ -486,6 +481,12 @@ async def handle_client(reader, writer):
     await writer.aclose()
     return True
 
+async def handle_socket(reader, writer):
+    request = (await reader.read(1024)).decode('ascii')
+    print(request)
+    
+    await writer.aclose()
+    return True
 
 def broadcast(state):
     if state:
@@ -546,6 +547,7 @@ def process(id):
 
 async def main():
     asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
+    asyncio.create_task(asyncio.start_server(handle_socket, my_ip, 81))
     asyncio.create_task(do_hbt())
     asyncio.create_task(buttons())
     asyncio.create_task(get_can())
