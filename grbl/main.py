@@ -36,7 +36,7 @@ can_slp = Pin(19, Pin.OUT, value=0)
 can_slp.value(0)
 can = CAN(0, tx=18, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 print('GRBL board test')
-print('V1.52')
+print('V1.53')
 
 #network
 wlan = network.WLAN(network.STA_IF)
@@ -121,6 +121,11 @@ def web_page():
 
     <p><a href="/?ring_on"><button class="button button2">ring_on</button></a><a href="/?ring_off"><button class="button button2">ring_off</button></a>
     <a href="/?suck_on"><button class="button button2">suck_on</button></a><a href="/?suck_off"><button class="button button2">suck_off</button></a></p>
+
+    <p><a href="/?spindle_on"><button class="button button2">spindle_on</button></a><a href="/?spindle_off"><button class="button button2">spindle_off</button></a>
+    <a href="/?vise_open"><button class="button button2">vise_open</button></a><a href="/?vise_close"><button class="button button2">vise_close</button></a></p>
+
+    <p><a href="/?coolant_on"><button class="button button2">coolant_on</button></a><a href="/?coolant_off"><button class="button button2">coolant_off</button></a><a href="/?run_export"><button class="button button2">run_export.txt</button></a></p>
 
     <br><br>
     <p><strong>Move Machine</strong></p>
@@ -403,11 +408,13 @@ async def handle_client(reader, writer):
             sd = machine.SDCard(slot=3)
         uos.mount(sd, "/sd")
         grbl.sd_mounted = True
+        grbl.sd_init = True
         print('sd contents:')
         print(uos.listdir('/sd'))
+
     elif action == '/?nuke':
         print('nuking board')
-        uos.remove('main.py')
+        # uos.remove('main.py')
         machine.reset()
 
     elif action == '/?ring_on':
@@ -421,12 +428,42 @@ async def handle_client(reader, writer):
     elif action == '/?suck_off':
         can.send([0], 399)
 
-    elif action.find('/file') == 0:
-        print('opening file')
+    elif action == '/?spindle_on':
+        can.send([1], 1181)
+    elif action == '/?spindle_off':
+        can.send([1], 1180)
+    elif action == '/?vise_open':
+        print('vise open')
+        can.send([1], 1196)
+        print('message sent')
+    elif action == '/?vise_close':
+        can.send([0], 1196)
+    elif action == '/?coolant_on':
+        print('vise open')
+        can.send([1], 1195)
+        print('message sent')
+    elif action == '/?coolant_off':
+        can.send([0], 1195)
+    elif action == '/?run_export':
+        print('opening export file')
         if not grbl.sd_init:
             sd = machine.SDCard(slot=3)
         if not grbl.sd_mounted:
             uos.mount(sd, "/sd")
+        grbl.sd_mounted = True
+        grbl.sd_init = True
+        grbl.file_opener('/sd/export.txt')
+        grbl.is_running = 'True'
+        grbl.get_next()
+
+    elif action.find('/file') == 0:
+        print('opening export file')
+        if not grbl.sd_init:
+            sd = machine.SDCard(slot=3)
+        if not grbl.sd_mounted:
+            uos.mount(sd, "/sd")
+        grbl.sd_mounted = True
+        grbl.sd_init = True
         fn = action.split('=')
         name = '/sd/' + fn[1]
         grbl.file_opener(name)

@@ -100,9 +100,9 @@ operator = Operator('_latch', 40, 41)
 output_1 = Pin(19, Pin.OUT, value=0)
 output_2 = Pin(18, Pin.OUT, value=0)
 output_3 = Pin(25, Pin.OUT, value=0)
-output_4 = Pin(19, Pin.OUT, value=0)
-output_5 = Pin(18, Pin.OUT, value=0)
-output_6 = Pin(25, Pin.OUT, value=0)
+output_4 = Pin(21, Pin.OUT, value=0)
+output_5 = Pin(22, Pin.OUT, value=0)
+output_6 = Pin(23, Pin.OUT, value=0)
 
 # Set up hbt timer
 hbt_state = 0
@@ -208,14 +208,14 @@ def process(id):
 
     elif id == 79:
         this_show()
+    elif id == 80:  # spindle.off()
+        output_4.value(1)
+        utime.sleep(1)
+        output_4.value(0)
     elif id == 81:  # spindle.on()
-        output_1.value(1)
-        utime.sleep_(1)
-        output_1.vaue(0)
-    elif id == 81:  # spindle.on()
-        output_1.value(1)
-        utime.sleep_(1)
-        output_1.vaue(0)
+        output_3.value(1)
+        utime.sleep(3)
+        output_3.value(0)
 
     elif id == 91:
         output_1.value(buf[0])

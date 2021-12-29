@@ -7,8 +7,10 @@ the_conversions = {
     'suction': 399,
     'feed.feeder': 398,
     'ring_light': 397,
-    'spindle.on': None,
-    'spindle.off': None
+    'spindle.on': 1181,
+    'spindle.off': 1180,
+    'vise': 1196,
+    'coolant': 1195
 }
 
 axes = {
