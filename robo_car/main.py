@@ -27,9 +27,9 @@ motor_b_2 = PWM(Pin(18), freq=15000, duty=0)
 motor_c_1 = PWM(Pin(26), freq=15000, duty=0)
 motor_c_2 = PWM(Pin(27), freq=15000, duty=0)
 motor_d_1 = PWM(Pin(12), freq=15000, duty=0)
-motor_d_2 = PWM(Pin(14), freq=15000, duty=0)
+motor_d_2 = PWM(Pin(19), freq=15000, duty=0)
 
-utime.sleep_ms(100)
+# utime.sleep_ms(100)
 motor_a_1.duty(0)
 motor_a_2.duty(0)
 motor_b_1.duty(0)
@@ -142,6 +142,20 @@ class Motor:
         self.r = r
         self.duty = duty
 
+    def move(self, speed):
+        if 120 < speed < 136:
+            self.f.duty(0)
+            self.r.duty(0)
+        elif speed < 125:
+            self.f.duty(0)
+            self.r.duty((128 - speed) * 8)
+            print((128 - speed) * 8)
+        else:
+            self.f.duty((speed - 128) * 8)
+            self.r.duty(0)
+            print((speed - 128) * 8)
+
+
     def forward(self):
         self.f.duty(self.duty)
         self.r.duty(0)
@@ -175,7 +189,7 @@ analog_d = Analog('analog_d', 32, 53)
 
 input_a = Button('input_a', 21, True, 54)
 input_b = Button('input_b', 22, True, 55)
-input_c = Button('input_c', 19, True, 56)
+input_c = Button('input_c', 14, True, 56)
 input_d = Button('input_d', 23, True, 57)
 
 
@@ -277,6 +291,15 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
+    elif id == 80:
+        motor_a.move(buf[0])
+        motor_c.move(buf[0])
+    elif id == 81:
+        motor_b.move(-(buf[0]-255))
+        motor_d.move(-(buf[0]-255))
+
+        
+
     elif id == 90:
         if buf[0] == 1:
             motor_a.forward()
@@ -323,6 +346,10 @@ def process(id):
 
     else:
         print('unknown command')
+
+
+light_show()
+this_show()
 
 while True:
     chk_hbt()
