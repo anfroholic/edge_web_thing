@@ -5,13 +5,13 @@ from neopixel import NeoPixel
 import utime
 import struct
 
-print('dpad board')
+print('color_sensor')
 print('v1.00p')
 print('initializing')
-this_id = 500
+this_id = 2100
 print(this_id)
 broadcast_state = False
-subscriptions = {541: 90}
+subscriptions = {}
 
 # Set up standard components
 upython.freq(240000000)
@@ -64,6 +64,7 @@ class Analog:
         self.pin.atten(ADC.ATTN_11DB)
         self.pin.width(ADC.WIDTH_12BIT)
         self.old = int(self.pin.read()/16)
+
     def check(self):
         self.state = int(self.pin.read()/16)
         global broadcast_state
@@ -81,6 +82,7 @@ class Operator:
         self.broadcast_id = this_id + broadcast_id
         print('{} initialized on can_id {}'.format(self.name, self.can_id))
         pass
+
     def _latch(self, switch):
         # global buf
         if switch == 1:
@@ -94,22 +96,13 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
+a_button = Button('a_button', 33, True, 50)
+b_button = Button('b_button', 23, True, 51)
 
-a_button = Button('a_button', 23, True, 50)
-b_button = Button('b_button', 22, True, 51)
-up = Button('up button', 25, True, 52)
-down = Button('down_button', 27, True, 53)
-left = Button('left_button', 33, True, 54)
-right = Button('right_button', 26, True, 55)
-push = Button('push_button', 32, True, 56)
+led_a = Pin(25, Pin.OUT, value=0)
+led_b = Pin(26, Pin.OUT, value=0)
 
-pot_a = Analog('a_pot', 34, 57)
-pot_b = Analog('b_pot', 35, 58)
 
-led_0 = Pin(15, Pin.OUT, value=0)
-led_1 = Pin(18, Pin.OUT, value=0)
-led_2 = Pin(19, Pin.OUT, value=0)
-led_3 = Pin(21, Pin.OUT, value=0)
 
 
 # Set up hbt timer
@@ -209,14 +202,7 @@ def process(id):
         subscriptions[sub[0]] = sub[1] # sender: receiver
         print(sub)
 
-    elif id == 90:
-        led_0.value(buf[0])
-    elif id == 91:
-        led_1.value(buf[0])
-    elif id == 92:
-        led_2.value(buf[0])
-    elif id == 93:
-        led_3.value(buf[0])
+
 
     else:
         print('unknown command')
@@ -237,11 +223,11 @@ while True:
 
     a_button.check()
     b_button.check()
-    up.check()
-    down.check()
-    left.check()
-    right.check()
-    push.check()
-
-    pot_a.check()
-    pot_b.check()
+    # up.check()
+    # down.check()
+    # left.check()
+    # right.check()
+    # push.check()
+    #
+    # pot_a.check()
+    # pot_b.check()

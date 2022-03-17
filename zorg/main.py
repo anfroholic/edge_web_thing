@@ -93,7 +93,7 @@ test_prog2 = [
 
 # Set up standard components
 upython.freq(240000000)
-hbt_led = Pin(5, Pin.OUT, value=0)
+hbt_led = Pin(15, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
 
@@ -182,22 +182,22 @@ class Operator:
                 process(subscriptions[self.broadcast_id])
 operator = Operator('_latch', 40, 41)
 
-a_button = Pin(32, Pin.IN, Pin.PULL_UP)
-b_button = Pin(32, Pin.IN, Pin.PULL_UP)
-c_button = Pin(32, Pin.IN, Pin.PULL_UP)
-d_button = Pin(32, Pin.IN, Pin.PULL_UP)
-
-# a_button = Button('a_button', 32, True, 50)
-# b_button = Button('b_button', 26, True, 51)
-# c_button = Button('c_button', 19, True, 52)
-# d_button = Button('d_button', 23, True, 53)
-# sd_detect = Pin(18, Pin.IN, Pin.PULL_UP)
-sd_detect = Button('sd_detect', 18, True, 54)
-
-led_a = Pin(33, Pin.OUT, value=0)
-led_b = Pin(25, Pin.OUT, value=0)
-led_c = Pin(21, Pin.OUT, value=0)
-led_d = Pin(22, Pin.OUT, value=0)
+# a_button = Pin(32, Pin.IN, Pin.PULL_UP)
+# b_button = Pin(32, Pin.IN, Pin.PULL_UP)
+# c_button = Pin(32, Pin.IN, Pin.PULL_UP)
+# d_button = Pin(32, Pin.IN, Pin.PULL_UP)
+#
+# # a_button = Button('a_button', 32, True, 50)
+# # b_button = Button('b_button', 26, True, 51)
+# # c_button = Button('c_button', 19, True, 52)
+# # d_button = Button('d_button', 23, True, 53)
+# # sd_detect = Pin(18, Pin.IN, Pin.PULL_UP)
+# sd_detect = Button('sd_detect', 18, True, 54)
+#
+# led_a = Pin(33, Pin.OUT, value=0)
+# led_b = Pin(25, Pin.OUT, value=0)
+# led_c = Pin(21, Pin.OUT, value=0)
+# led_d = Pin(22, Pin.OUT, value=0)
 
 
 
@@ -334,26 +334,27 @@ async def get_can():
         await asyncio.sleep_ms(1)
 
 async def buttons():
-    while True:
-        # if not func_button.value():
-        #     global broadcast_state
-        #     print('function button pressed')
-        #     broadcast_state = not broadcast_state
-        #     broadcast(broadcast_state)
-        #     await asyncio.sleep_ms(250)
-        if not a_button.value():
-                print('make demo 1')
-                demo_1()
-                await asyncio.sleep_ms(250)
-        if not b_button.value():
-                print('make demo 2')
-        if not c_button.value():
-                print('make demo 3')
-        # a_button.check()
-        # b_button.check()
-        # c_button.check()
-        # d_button.check()
-        await asyncio.sleep_ms(150)
+    pass
+    # while True:
+    #     # if not func_button.value():
+    #     #     global broadcast_state
+    #     #     print('function button pressed')
+    #     #     broadcast_state = not broadcast_state
+    #     #     broadcast(broadcast_state)
+    #     #     await asyncio.sleep_ms(250)
+    #     if not a_button.value():
+    #             print('make demo 1')
+    #             demo_1()
+    #             await asyncio.sleep_ms(250)
+    #     if not b_button.value():
+    #             print('make demo 2')
+    #     if not c_button.value():
+    #             print('make demo 3')
+    #     # a_button.check()
+    #     # b_button.check()
+    #     # c_button.check()
+    #     # d_button.check()
+    #     await asyncio.sleep_ms(150)
 
 async def do_hbt():
     while True:
