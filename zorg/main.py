@@ -1,14 +1,15 @@
 import utime
 from machine import Pin, CAN, ADC
-import machine as upython
+import machine
 import network
 from neopixel import NeoPixel
 import esp
 esp.osdebug(None)
 import uasyncio as asyncio
 import struct
-
+import os
 import gc
+sd_contents = []
 gc.collect()
 print('zorg board')
 print('v1.01p')
@@ -92,7 +93,7 @@ test_prog2 = [
 
 
 # Set up standard components
-upython.freq(240000000)
+machine.freq(240000000)
 hbt_led = Pin(15, Pin.OUT, value=0)
 
 func_button = Pin(36, Pin.IN) # Has external pullup
@@ -199,7 +200,25 @@ operator = Operator('_latch', 40, 41)
 # led_c = Pin(21, Pin.OUT, value=0)
 # led_d = Pin(22, Pin.OUT, value=0)
 
+def mount_sd():
+    global sd_contents
+    if !sd_mounted:
+        sd = machine.SDCard(slot=2)
+        os.mount(sd, "/sd")  # mount
 
+        sd_contents = os.listdir('/sd')    # list directory contents
+        print(sd_contents)
+    else:
+        print('sd mounted already')
+
+
+def list_sd():
+    html = ''
+    for file in sd_contents:
+        this = f'<a href="/item/{file}"><button class="button button3">file</button></a>'.format(file)
+        html.append(this)
+    html.append('\n')
+    return html
 
 #network
 if func_button.value():
@@ -263,6 +282,8 @@ def web_page():
     <body>
     <h1>Evezor Web Interface</h1>
     <p>Connections:</p> <strong>""" + connections + """</strong>
+    <p>sd contents:</p>
+    <p> """ + list_sd() + """
 
     <p><a href="/led=off"><button class="button button2">neo off</button></a>          <a href="/led=on"><button class="button">neo on</button></a></p>
 
@@ -399,6 +420,10 @@ def demo_1():
     neo_status[0] = (0, 0, 0)
     neo_status.write()
 
+def load_file(header):
+    header = header.split('/')
+    print(f'maybe we should load: {}'.format(header[1]))
+
 def make_sub(sender, receiver):
     global connections
     connections += '<p>{}, {}</p>'.format(sender, receiver)
@@ -473,6 +498,8 @@ async def handle_client(reader, writer):
         can.send([0], 4)
     elif action == '/demo_1':
         demo_1()
+    elif action.find('/item') == 0:
+        load_file(action)
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
@@ -509,7 +536,7 @@ def process(id):
     if id == 1:
         light_show()
     elif id == 2:
-        upython.reset()
+        machine.reset()
     elif id == 3:
         neo_status[0] = (buf[0], buf[1], buf[2])
         neo_status.write()

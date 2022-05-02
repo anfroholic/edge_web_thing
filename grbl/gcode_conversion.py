@@ -10,7 +10,8 @@ the_conversions = {
     'spindle.on': 1181,
     'spindle.off': 1180,
     'vise': 1196,
-    'coolant': 1195
+    'coolant': 1195,
+    'spindle': 1492
 }
 
 axes = {

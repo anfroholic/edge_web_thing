@@ -115,8 +115,8 @@ def web_page():
     <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
 
     <p><a href="/?homex"><button class="button button2">homex</button></a><a href="/?homey"><button class="button button2">homey</button></a>
-    <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a></p>
-
+    <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a>
+    <a href="/?homea"><button class="button button2">homea</button></a><a href="/?homeb"><button class="button button2">homeb</button></a></p>
     <p><a href="/?mount_sd"><button class="button button3">mount sd</button></a><a href="/?nuke"><button class="button button4">NUKE</button></a><a href="/?get_line"><button class="button button3">get_line</button></a></p>
 
     <p><a href="/?ring_on"><button class="button button2">ring_on</button></a><a href="/?ring_off"><button class="button button2">ring_off</button></a>
@@ -400,6 +400,12 @@ async def handle_client(reader, writer):
     elif action == '/?homez':
         print('homing z')
         uart1.write('$HZ\n')
+    elif action == '/?homea':
+        print('homing a')
+        uart1.write('$HA\n')
+    elif action == '/?homeb':
+        print('homing b')
+        uart1.write('$HB\n')
 
     elif action == '/?mount_sd':
 
@@ -429,9 +435,9 @@ async def handle_client(reader, writer):
         can.send([0], 399)
 
     elif action == '/?spindle_on':
-        can.send([1], 1181)
+        can.send([1], 1492)
     elif action == '/?spindle_off':
-        can.send([1], 1180)
+        can.send([0], 1492)
     elif action == '/?vise_open':
         print('vise open')
         can.send([1], 1196)
