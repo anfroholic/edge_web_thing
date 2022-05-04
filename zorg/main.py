@@ -12,18 +12,19 @@ import json
 
 import gc
 gc.collect()
+
+import wlan
+
 print('zorg board')
-print('v1.6')
+print('v1.7')
 print('initializing')
 this_id = 100
 print(this_id)
 broadcast_state = False
 subscriptions = {}
 connections = ''
-sd_contents = ''
+sd_files = ''
 port = 80
-
-networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
 test_prog1 = [
 [752, 690], # lcd button -> relay
@@ -57,39 +58,6 @@ test_prog1 = [
 [1255, 691]
 ]
 
-test_prog2 = [
-[752, 690], # lcd button -> relay
-[753, 691], # lcd button -> relay
-[754, 692], # lcd button -> relay
-[755, 693], # lcd button -> relay
-[850, 798], # load cell -> lcd screen
-[850, 491], # load cell -> servo
-[557, 799], # dpad pot -> lcd screen
-[557, 492], # dpad pot -> servo
-[558, 493], # dpad pot -> servo
-[552, 994], # dpad up -> red stack
-[553, 996], # dpad down -> green stack
-[556, 999], # dpad push -> stack beeper
-[941, 995], # stack latch -> self yellow
-[550, 995],  # dpad_a -> stack yellow
-[1251, 940],  # joy yellow -> stack latch
-[1250, 996], # joy green -> green stack
-[1253, 994], # joy red -> red stack
-[1252, 999],
-[1262, 495], # joy X -> servo
-[1263, 496], # joy y -> servo
-[1264, 497], # joy X -> servo
-[1265, 498], # joy y -> servo
-[1252, 1191], # joy blue -> mosfet 1
-[1256, 1090], # joy up -> analog out1
-[1258, 1091], # joy left -> analog out1
-[1257, 1092], # joy down -> analog out2
-[1259, 690], # joy right -> mosfet 1
-[1254, 1191], # joy start -> analog out1
-[1255, 691]
-]
-
-
 
 
 
@@ -120,13 +88,13 @@ mess = [0, 0, 0, memoryview(buf)]
 
 
 def mount_sd():
-    global sd_contents
+    global sd_files
 
     sd = machine.SDCard(slot=2)
     uos.mount(sd, "/sd")
     print('sd contents:')
     print(uos.listdir('/sd'))
-    sd_contents = sd_contents.join(['<p>{}: {}</p>'.format(i, f) for i, f in enumerate(uos.listdir('/sd'))])
+    sd_files = ''.join(['<p>{}: {}</p>'.format(i, f) for i, f in enumerate(uos.listdir('/sd'))])
 
 
 def file():
@@ -224,49 +192,14 @@ operator = Operator('_latch', 40, 41)
 
 
 #network
-if func_button.value():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
+lan = wlan.connect(neo_status)
+my_ip = lan.ifconfig()[0]
+neo_status[0] = (0, 10, 0)
+neo_status.write()
+utime.sleep_ms(250)
+neo_status[0] = (0, 0, 0)
+neo_status.write()
 
-    aps = wlan.scan()
-
-    neo_status[0] = (0, 10, 0)
-    neo_status.write()
-
-
-    for i in range(len(aps)):
-        station = aps[i][0].decode('ascii')
-        if station in networks:
-            print('connecting to ' + station)
-            wlan.connect(station, networks[station])
-
-    neo_status[0] = (0, 0, 10)
-    neo_status.write()
-
-    while not wlan.isconnected():
-        print(".", end = "")
-        utime.sleep_ms(250)
-
-    print('Connection successful')
-    print(wlan.ifconfig())
-
-    my_ip = wlan.ifconfig()[0]
-    neo_status[0] = (0, 10, 0)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 0)
-    neo_status.write()
-
-else:
-    neo_status[0] = (10, 0, 10)
-    neo_status.write()
-    print('function button pressed, becomming access point')
-    wlan = network.WLAN(network.AP_IF) # create access-point interface
-    wlan.config(essid='evezor') # set the ESSID of the access point
-    wlan.config(max_clients=10) # set how many clients can connect to the network
-    wlan.active(True)         # activate the interface
-    my_ip = wlan.ifconfig()[0]
-    print(wlan.ifconfig())
 
 def web_page():
   # global connections
@@ -285,7 +218,7 @@ def web_page():
     <body>
     <h1>Evezor Web Interface</h1>
     <p>Connections:</p> <strong>""" + connections + """</strong>
-    <p>SD Contents:</p> <strong>""" + sd_contents + """</strong>
+    <p>SD Contents:</p> <strong>""" + sd_files + """</strong>
 
     <p><a href="/led=off"><button class="button button2">neo off</button></a>
     <a href="/led=on"><button class="button">neo on</button></a>

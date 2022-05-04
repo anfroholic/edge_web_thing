@@ -69,11 +69,11 @@ class NeoRing():
 
 class Encoder:
     resolution = 16384 # 14 bits
-    angle_register = int(0xFE)
+    ang_reg = int(0xFE)
 
     def __init__(self, name, address, offset):
         self.name = name
-        self.address = address
+        self.adr = address
         self.offset = offset
         self.start = utime.ticks_ms()
         self.interval = 12
@@ -83,6 +83,7 @@ class Encoder:
             self.ring.append(0)
         self.index = 0
         self.state = None
+        self.raw = None
 
     def check(self):
         if utime.ticks_diff(utime.ticks_ms(), self.start) > self.interval:
@@ -92,9 +93,8 @@ class Encoder:
                 print('{}: {}'.format(self.name, self.state))
 
     def read(self):
-        raw = struct.unpack('h', i2c.readfrom_mem(
-                                    self.address, self.angle_register, 2))[0]
-        angle = raw/self.resolution * 360.0
+        self.raw = struct.unpack('h', i2c.readfrom_mem(self.adr, self.ang_reg, 2))[0]
+        angle = self.raw/self.resolution * 360.0
         return angle
 
     def average(self, input):
@@ -105,6 +105,7 @@ class Encoder:
         for angle in self.ring:
             total += angle
         return total/self.ring_size
+
 
 class Button:
     def __init__(self, name, pin, pull_up, can_id):
@@ -177,7 +178,7 @@ operator = Operator('_latch', 40, 41)
 a_button = Button('a_button', 32, True, 50)
 b_button = Button('b_button', 33, True, 51)
 
-mr_theta_coder = Encoder(name='mr_theta_coder', address=65, offset=0)
+mr_theta_coder = Encoder(name='mr_theta_coder', address=67, offset=0)
 mrs_phi_coder = Encoder(name='mrs_phi_coder', address=64, offset=0)
 
 neo_phi = NeoRing(pin=21, num_leds=12)

@@ -1,6 +1,6 @@
 import esp32
 import machine as upython
-from machine import Pin, ADC, Timer, PWM, UART, CAN
+from machine import Pin, ADC, Timer, PWM, UART, CAN, I2C, SoftI2C
 from neopixel import NeoPixel
 import utime
 import struct
@@ -31,6 +31,60 @@ can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
 buf = bytearray(8)
 mess = [0, 0, 0, memoryview(buf)]
+
+i2c = SoftI2C(scl=Pin(21), sda=Pin(19), freq=80000)
+
+# i2c = I2C(1, scl=Pin(21), sda=Pin(19), freq=70000)
+
+class VEML6040:
+    adr = 16
+
+    # registers
+    cmd_reg = 0
+
+    red = int(0x08)
+    green = int(0x09)
+    blue = int(0x0A)
+    white = int(0x0B)
+
+    # color_regs = {'red': red, 'green': green, 'blue': blue, 'white': white}
+    color_regs = [red, green, blue, white]
+
+    command = 6
+
+    def __init__(self, name, port):
+        self.name = name
+        self.port = port
+        self.start = utime.ticks_ms()
+        self.interval = 100 # ms
+        self.integration_time = 60 # ms
+
+    def check(self):
+        if utime.ticks_diff(utime.ticks_ms(), self.start) > self.interval:
+            self.start = utime.ticks_ms()
+            self.trigger()
+            utime.sleep_ms(self.integration_time)
+            print(self.getRGB())
+
+    def trigger(self):
+        self.port.writeto_mem(self.adr, self.cmd_reg, b'\x06\x00')
+
+    def read(self, register):
+        utime.sleep_ms(5)
+        # try:
+        val = struct.unpack('H', self.port.readfrom_mem(self.adr, register, 2))[0]
+        # except OSError:
+        #     pass
+        return val
+
+    def getRGB(self):
+        return [self.read(reg) for reg in self.color_regs]
+
+sen = VEML6040('sensor', i2c)
+sen.trigger()
+print('booting')
+utime.sleep(5)
+print('booted')
 
 class Button:
     def __init__(self, name, pin, pull_up, can_id):
@@ -98,6 +152,7 @@ operator = Operator('_latch', 40, 41)
 
 a_button = Button('a_button', 33, True, 50)
 b_button = Button('b_button', 23, True, 51)
+input_a = Button('input_a', 32, True, 52)
 
 led_a = Pin(25, Pin.OUT, value=0)
 led_b = Pin(26, Pin.OUT, value=0)
@@ -128,32 +183,21 @@ def chk_hbt():
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
 
 def this_show():
-    print('doing show')
-    led_0.value(1)
-    utime.sleep_ms(300)
-    led_1.value(1)
-    utime.sleep_ms(300)
-    led_2.value(1)
-    utime.sleep_ms(300)
-    led_3.value(1)
-    utime.sleep_ms(300)
-    led_0.value(0)
-    led_1.value(0)
-    led_2.value(0)
-    led_3.value(0)
+    leds = [led_a, led_b]
+    for led in leds:
+        led.value(1)
+        utime.sleep_ms(300)
+    for led in leds:
+        led.value(0)
+
+
 
 def light_show():
-    neo_status[0] = (0, 33, 0)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 33)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (33, 0, 0)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 0)
-    neo_status.write()
+    show = [(0, 33, 0), (0, 0, 33), (33, 0, 0), (0, 0, 0)]
+    for color in show:
+        neo_status[0] = color
+        neo_status.write()
+        utime.sleep_ms(250)
 
 def broadcast(state):
     if state:
@@ -223,11 +267,4 @@ while True:
 
     a_button.check()
     b_button.check()
-    # up.check()
-    # down.check()
-    # left.check()
-    # right.check()
-    # push.check()
-    #
-    # pot_a.check()
-    # pot_b.check()
+    sen.check()
