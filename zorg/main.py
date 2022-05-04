@@ -8,9 +8,12 @@ esp.osdebug(None)
 import uasyncio as asyncio
 import struct
 import os
+
 import json
 
+
 import gc
+sd_contents = []
 gc.collect()
 
 import wlan
@@ -189,7 +192,25 @@ operator = Operator('_latch', 40, 41)
 # led_c = Pin(21, Pin.OUT, value=0)
 # led_d = Pin(22, Pin.OUT, value=0)
 
+def mount_sd():
+    global sd_contents
+    if !sd_mounted:
+        sd = machine.SDCard(slot=2)
+        os.mount(sd, "/sd")  # mount
 
+        sd_contents = os.listdir('/sd')    # list directory contents
+        print(sd_contents)
+    else:
+        print('sd mounted already')
+
+
+def list_sd():
+    html = ''
+    for file in sd_contents:
+        this = f'<a href="/item/{file}"><button class="button button3">file</button></a>'.format(file)
+        html.append(this)
+    html.append('\n')
+    return html
 
 #network
 lan = wlan.connect(neo_status)
@@ -219,6 +240,7 @@ def web_page():
     <h1>Evezor Web Interface</h1>
     <p>Connections:</p> <strong>""" + connections + """</strong>
     <p>SD Contents:</p> <strong>""" + sd_files + """</strong>
+
 
     <p><a href="/led=off"><button class="button button2">neo off</button></a>
     <a href="/led=on"><button class="button">neo on</button></a>
@@ -358,6 +380,10 @@ def demo_1():
     neo_status[0] = (0, 0, 0)
     neo_status.write()
 
+def load_file(header):
+    header = header.split('/')
+    print(f'maybe we should load: {}'.format(header[1]))
+
 def make_sub(sender, receiver):
     global connections
     connections += '<p>{}, {}</p>'.format(sender, receiver)
@@ -432,8 +458,13 @@ async def handle_client(reader, writer):
         can.send([0], 4)
     elif action == '/demo_1':
         demo_1()
+
+    elif action.find('/item') == 0:
+        load_file(action)
+
     elif action == '/?mount_sd':
         mount_sd()
+
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')

@@ -8,7 +8,7 @@ import struct
 print('coms board - qr code')
 print('v1.00p')
 print('initializing')
-this_id = 500
+this_id = 1700
 print(this_id)
 broadcast_state = False
 subscriptions = {}
@@ -223,6 +223,12 @@ while True:
         broadcast_state = not broadcast_state
         broadcast(broadcast_state)
         utime.sleep_ms(200)
+    if qr.any():
+        line = qr.readline()
+        if line:
+            print(line)
+            if broadcast_state:
+                can.send(struct.pack('Q', int(line)), this_id+99)
 
     input_a.check()
     input_b.check()
