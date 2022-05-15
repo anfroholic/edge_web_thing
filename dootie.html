@@ -1,0 +1,57 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+    <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+  </head>
+<p>making robots make dootie:</p>
+<p>dootie here, dootie there</p>
+<p>dootie everywhere</p>
+<p>dootie on a fuse, dootie on a cake</p>
+<p>tell that robot to make, make, make</p>
+<p>....dootie :)</p>
+<hr>
+  <body>
+      <py-script>
+
+make_doot = """
+put some gcode in here
+for making a doot
+  ***keep the quotes***  """
+
+feedrate = 300
+
+def make_dootie(dooties):
+  for doot in dooties:
+      print(f'G1 X{doot[0]} Y{doot[1]} F{feedrate}')
+      print(make_doot)
+
+
+def grid(x, y, x_step, y_step, num_x, num_y):
+    row = [x + i*x_step for i in range(num_x)]
+    column = [y + i*y_step for i in range(num_y)]
+    return [(j, k) for j in row for k in column]
+
+
+dootie_points = [
+    (1, 1),
+    (1, 2),
+    (2, 1),
+    (2, 2)]
+
+
+dootie_grid = grid(x=1, # x start
+                   y=1, # y start
+                   x_step=1, # x step size
+                   y_step=1, # y step size
+                   num_x=3,  # number of columns
+                   num_y=3)  # number of rows
+
+# make export
+print('start code')
+make_dootie(dootie_points)
+make_dootie(dootie_grid)
+print('end code')
+
+      </py-script>
+  </body>
+</html>
