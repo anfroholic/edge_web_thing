@@ -1,3 +1,6 @@
+import json
+import utime
+
 
 def web_page():
 
@@ -15,21 +18,20 @@ def web_page():
     </head>
     <body>
     <h1>Evezor Web Interface</h1>
-    
+
 
 
     <p><a href="/home"><button class="button button2">home</button></a>
-    <a href="/led=off"><button class="button button2">neo off</button></a><a href="/?led=on"><button class="button">neo on</button></a>
+    <a href="/led=off"><button class="button button2">neo off</button></a><a href="/led=on"><button class="button">neo on</button></a>
     <a href="/connect"><button class="button button2">unmount sd</button></a><a href="/?run"><button class="button button2">run</button></a></p>
 
     <p><a href="/?get_state"><button class="button button3">get_state</button></a><a href="/?unlock"><button class="button button3">unlock</button></a>
     <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
 
     <p><a href="/?homex"><button class="button button2">homex</button></a><a href="/?homey"><button class="button button2">homey</button></a>
-    <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a>
-    <a href="/?homea"><button class="button button2">homea</button></a><a href="/?homeb"><button class="button button2">homeb</button></a></p>
-    <p><a href="/?mount_sd"><button class="button button3">mount sd</button></a><a href="/?nuke"><button class="button button4">NUKE</button></a><a href="/?get_line"><button class="button button3">get_line</button></a></p>
-
+    <a href="/?homez"><button class="button button2">homez</button></a>
+    <a href="/?homea"><button class="button button2">homea</button></a><a href="/?homeb"><button class="button button2">homeb</button></a><a href="/?homec"><button class="button button2">homec</button></a></p>
+    
     <p><a href="/?ring_on"><button class="button button2">ring_on</button></a><a href="/?ring_off"><button class="button button2">ring_off</button></a>
     <a href="/?suck_on"><button class="button button2">suck_on</button></a><a href="/?suck_off"><button class="button button2">suck_off</button></a></p>
 
@@ -76,150 +78,147 @@ def web_page():
     </body></html>"""
   return html
 
+the_conversions = {
+    'suction': 399,
+    'feed.feeder': 398,
+    'ring_light': 397,
+    'spindle.on': 1181,
+    'spindle.off': 1180,
+    'vise': 1196,
+    'coolant': 1195,
+    'spindle': 1492
+}
+
+axes = {
+    'x': 'X',
+    'y': 'Y',
+    'z': 'Z',
+    'a': 'A',
+    'b': 'B',
+    'c': 'C'
+}
+
+
+def convert(**line):
+    """
+    Convert json line into gcode
+    """
+    # print('converting')
+    # print(line)
+    if line['cmd'] == 'move.linear' or line['cmd'] == 'move.rapid':
+        g_line = "G1 "
+        for axis in axes:
+            if axis in line:
+                g_line += '{}{} '.format(axes[axis], round(float(line[axis]), 2))
+        if 'feed' in line:
+            g_line += 'F{}'.format(line['feed'])
+        return g_line
+
+    else:
+        return "G4 P{}".format(line['val'])
+
+
+
 class GRBL:
-    def __init__(self, sd, can, uart):
+    def __init__(self, sd, can, uart, hbt_int):
         self.sd = sd
         self.can = can
         self.uart = uart
-        
-        self.connection_state = 'connected'
-        self.is_running = 'False'
 
-        self.to_parse = ''
-        self.index = 0
-        self.line = ''
-        self.state = ''
-        self.sd_state = 'unmounted'
-        self.file_blurb = ''
+        self.connected = False
+        self.state = 'idle'  # idle, run
+        # self.states = {'idle': self.idle, 'run': run}
 
-        self.blurb_index = 0
-        self.j_blurb = {}
-        self.f = None
         self.queue = {}
-        self.modal = ['move.linear', 'move.rapid', 'sleep']
 
-    def parse_move(self, request):
-        """
-        parse move that came from web socket
-        """
-        end = request.find(' HTTP')
-        action = request[14:end]
-        action += '&'
-        # print('parsing request')
-        # print(action)
-        axes = ['x', 'y', 'z', 'a']
-        parsed = {}
-        for axis in axes:
-            index = action.find('&')
-            if action[2: index] != '':
-                parsed[axis] = action[2: index]
-            action = action[(index + 1):]
-        # print(parsed)
-        parsed['command'] = 'move.linear'
-        parsed['feed'] = 2000
-        return parsed
+        self.hbt_int = hbt_int
+        self.next_hbt = utime.ticks_add(utime.ticks_ms(), self.hbt_int)
 
-    def send(self, message):
-        """
-        send message to grbl board
-        """
-        if self.connection_state == 'connected':
-            self.uart.write(message + '\n')
-        else:
-            print(message)
+    def chk(self):
+        # do heartbeat, poll grbl
+        if utime.ticks_diff(self.next_hbt, utime.ticks_ms()) <= 0:
+            self.uart.write('?')
+            self.next_hbt = utime.ticks_add(self.next_hbt, self.hbt_int)
 
-    def get_line(self):
-        """
-        find line in text from grbl over uart
-        """
-        if self.to_parse != '':
-            # print('trying to parse')
-            self.index = self.to_parse.find('\r')
-            # print(self.to_parse)
-            # print(self.index)
-            if len(self.to_parse) > 0: # check for empty line
-                if self.index > 0:
-                    self.line = self.to_parse[0:self.index]
-                    self.to_parse = self.to_parse[(self.index + 2):]
-                else:
-                    self.to_parse = self.to_parse[2:]
-                self.handler(self.line)
+        if self.uart.any():
+            msg = self.uart.readline()
+            if msg == '':
+                return
+            
+            if msg[0] == '<': # grbl info line
+                print(msg)
 
-    def handler(self, line):
-        """
-        handler for incomming uart comms from grbl
-        this also will send blurbs to grbl when running file from sd card
-        """
-        # print(line)
-        if line == 'ok':
-            if self.is_running == 'True':
-                # print('todo: finish handler')
-                self.get_next()
-        elif line[0] == '<':
-            print('update machine info')
-            print(line)
-            seg = line.split('|')
-            grbl.state = seg[0][1:]
-        elif line == '[MSG:Evezor]':
-            print('got evezor message')
-        else:
-            print(line)
-            # print('maybe need some other command thing')
+            elif msg == 'ok':
+                if self.state == 'run':
+                    if self.queue != {}:
+                        self.send_c(**self.queue)
+                        self.queue = {}
 
-    def get_next(self):
-        """
-        gets next line from sd card file
-        """
-        if self.queue:
-            # if a message is in queue it probably means it's a can bus message.
-            # a dwell has been sent in it's place last round and now it should send
-            print('message in queue')
-            print(self.queue)
-            mess = [self.queue['val']]
-            can.send(mess, the_conversions[self.queue['command']])
-            self.queue = {}
 
-        if len(self.file_blurb) < 200:
-            self.file_blurb += self.f.read(100)
-
-        self.blurb_index = self.file_blurb.find('\r')
-        if len(self.file_blurb) > 0:
-            if self.blurb_index > 0:
-                self.j_blurb = json.loads(self.file_blurb[0:self.blurb_index])
-                self.file_blurb = self.file_blurb[(self.blurb_index + 2):]
-                # self.j_blurb = json.loads(self.blurb)
-                # print(self.j_blurb)
-                self.parse_message(self.j_blurb)
-        else:
-            print('must be the end of the file, maybe consider stop running')
-            if self.queue:
-                print('oops, guess there was one more command')
-                self.get_next()
+                    new_line = self.get_next_cmd()
+                    if new_line is not None:
+                        self.process(new_line)
+                    else:
+                        print('file complete')
+                        self.state == 'idle'
             else:
-                self.is_running = 'False'
-                print('closing file')
-                self.f.close()
-                # print('unmounting sd')
-                # uos.umount('/sd')
+                print(msg)
 
+    def process(self, line):
+        # print(line)
+        grbl = ['move.linear', 'move.rapid', 'sleep']
+        if line is None:
+            pass
+        
+        elif line['cmd'] in grbl:
+            self.send_g(convert(**line))
 
-    def parse_message(self, msg):
-        """
-        send message to converter or handle canbus requests
-        """
-        # print('parser')
-        if msg['command'] in self.modal:
-            # print('modal command')
-            self.send(convert(**msg))
-        elif 'command' in msg:
-            # we need to wait until grbl is finished working on modal commands
-            # and returns ok
-            # print('pausing')
-            self.queue = msg
-            self.send('G4 P.01')
+        elif line['cmd'] in the_conversions:
+            self.queue = dict(data=line['val'], arb_id=the_conversions[line['cmd']])
+            self.send_g('G04 P0.1')
+
         else:
-            print(msg)
-            self.get_next()
+            print('must be comment or something?')
+            print(line)
+            self.process(self.get_next_cmd)
 
-    def can_send(self, mess, arb):
-        can.send(mess, arb)
+    def get_next_cmd(self):
+        while True:
+            line = self.sd.readline()
+            if line is None:
+                print('end of file')
+                return None
+            if line != '':
+                # print(line)
+                return json.loads(line)
+            
+
+    def run(self):
+        while True:
+            line = self.get_next_cmd()
+            if 'cmd' in line:
+                self.process(line)
+                self.state = 'run'
+                break
+            print(line)
+            
+    def unlock(self):
+        self.send_g('$X')
+
+    def sleep(self):
+        self.send_g('$SLP')
+
+    def wake(self):
+        self.uart.write(b'\x18')
+        self.uart.write('\n')
+    
+    def home(self, axis):
+        self.send_g('$H{}'.format(axis.upper()))
+
+    def send_g(self, cmd):
+        print(cmd)
+        self.uart.write(cmd + '\n')
+
+    def send_c(self, **cmd):
+        print(cmd)
+        # self.can.send(**cmd)

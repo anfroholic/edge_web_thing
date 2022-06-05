@@ -7,9 +7,7 @@ import uasyncio as asyncio
 
 networks = {'evezor': 'drinkmaker', 'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
 
-def connect(neo: NeoStatus):
-    neo.fill(0, 20, 20)
-    
+def connect():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
@@ -46,7 +44,7 @@ class API:
         self.get_queue = []
         self.post_queue = []
 
-    async def check(self):
+    async def chk(self):
         while True:
             if self.get_queue:
                 await self.get(self.get_queue.pop(0))
