@@ -1,389 +1,80 @@
-import utime
-from machine import Pin, CAN, ADC
-import machine
-import network
-from neopixel import NeoPixel
-import esp
-esp.osdebug(None)
-import uasyncio as asyncio
-import struct
-import os
+import wlan
+from machine import Pin
 import json
-
+import utime
+import machine
+from utilities import *
+import uasyncio as asyncio
+import web_page
+import cnc
 import gc
 gc.collect()
 
-import wlan
-
-print('zorg board')
-print('v1.7')
+print('arm marlin board')
+print('v1.1')
 print('initializing')
 this_id = 100
 print(this_id)
-broadcast_state = False
-subscriptions = {}
-connections = ''
-sd_files = ''
-port = 80
-
-
 
 # Set up standard components
 machine.freq(240000000)
-hbt_led = Pin(13, Pin.OUT, value=0)
+neo_status = NeoMgr(17, 1)
+neo_status.fill(0,5,5)
+sta = wlan.connect()
+neo_status.fill(0,0,0)
+my_ip = sta.ifconfig()[0]
 
-func_button = Pin(36, Pin.IN) # Has external pullup
+uart1 = UartMgr(1, baudrate=115200, rx=22, tx=21)
+hbt = HBT(pin=13, interval=500)
+can = CanMgr(0, tx=18, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000, slp_pin=19)
+sd = SDMgr(slot=2)
+sd.mount()
 
-neo_status_pin = Pin(17, Pin.OUT)
-neo_status = NeoPixel(neo_status_pin, 1)
-neo_status[0] = (0, 0, 0)
-neo_status.write()
+grbl = cnc.GRBL(sd, can, uart1, hbt_int=8000)
 
-can_slp = Pin(2, Pin.OUT, value=0)
-can_slp.value(0)
-
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
-
-buf = bytearray(8)
-mess = [0, 0, 0, memoryview(buf)]
-
-
-def mount_sd():
-    global sd_files
-
-    sd = machine.SDCard(slot=2)
-    uos.mount(sd, "/sd")
-    print('sd contents:')
-    print(uos.listdir('/sd'))
-    sd_files = ''.join(['<p>{}: {}</p>'.format(i, f) for i, f in enumerate(uos.listdir('/sd'))])
+def print_state(state, button):
+    print(state, button.can_id)
+func_button = Button('func button', 36, False, 54, print_state)
 
 
-def file():
-    with open('/sd/text.txt', 'r') as f:
-        for line in f:
-            yield line.strip()
-
-gen = file()
-def do_the_file():
-    for line in gen:
-        print(json.loads(line))
-
-
-class Button:
-    def __init__(self, name, pin, pull_up, can_id):
-        self.name = name
-        print(self.name)
-        #self.pin = pin
-        self.pullup = pull_up
-        self.state = None
-        self.can_id = can_id + this_id
-        if pull_up:
-            self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
-        else:
-            self.pin = Pin(pin, Pin.IN)
-        self.state = self.pin.value()
-
-    def check(self):
-        global broadcast_state
-        if self.state != self.pin.value():
-            self.state = not self.state
-            print('{} state: {} can_id: {}'.format(self.name, not self.state, self.can_id))
-            if broadcast_state:
-                can.send([not self.state], self.can_id)
-
-class Analog:
-    def __init__(self, name, pin, can_id):
-        self.name = name
-        print(self.name)
-        self.state = None
-        self.can_id = can_id + this_id
-        self.pin = ADC(Pin(pin))
-        self.pin.atten(ADC.ATTN_11DB)
-        self.pin.width(ADC.WIDTH_12BIT)
-        self.old = int(self.pin.read()/16)
-    def check(self):
-        self.state = int(self.pin.read()/16)
-        global broadcast_state
-        if abs(self.state - self.old) > 1:
-            self.old = self.state
-            print('{}: {} can_id: {}'.format(self.name, self.state, self.can_id))
-            if broadcast_state:
-                can.send([self.state], self.can_id)
-
-class Operator:
-    def __init__(self, name, can_id, broadcast_id):
-        self.name = name
-        self.latch = False
-        self.can_id = can_id
-        self.broadcast_id = this_id + broadcast_id
-        print('{} initialized on can_id {}'.format(self.name, self.can_id))
-        pass
-    def _latch(self, switch):
-        # global buf
-        if switch == 1:
-            self.latch = not self.latch
-            if self.latch:
-                buf[0] = 1
-                can.send([1], self.broadcast_id)
-            else:
-                buf[0] = 0
-                can.send([0], self.broadcast_id)
-            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
-            if self.can_id + 1 + this_id in subscriptions:
-                process(subscriptions[self.broadcast_id])
-operator = Operator('_latch', 40, 41)
-
-# a_button = Pin(32, Pin.IN, Pin.PULL_UP)
-# b_button = Pin(32, Pin.IN, Pin.PULL_UP)
-# c_button = Pin(32, Pin.IN, Pin.PULL_UP)
-# d_button = Pin(32, Pin.IN, Pin.PULL_UP)
-#
-# # a_button = Button('a_button', 32, True, 50)
-# # b_button = Button('b_button', 26, True, 51)
-# # c_button = Button('c_button', 19, True, 52)
-# # d_button = Button('d_button', 23, True, 53)
-# # sd_detect = Pin(18, Pin.IN, Pin.PULL_UP)
-# sd_detect = Button('sd_detect', 18, True, 54)
-#
-# led_a = Pin(33, Pin.OUT, value=0)
-# led_b = Pin(25, Pin.OUT, value=0)
-# led_c = Pin(21, Pin.OUT, value=0)
-# led_d = Pin(22, Pin.OUT, value=0)
-
-
-
-#network
-lan = wlan.connect(neo_status)
-my_ip = lan.ifconfig()[0]
-neo_status[0] = (0, 10, 0)
-neo_status.write()
-utime.sleep_ms(250)
-neo_status[0] = (0, 0, 0)
-neo_status.write()
-
-
-def web_page():
-  # global connections
-
-  html = """
-<html>
-    <head>
-        <title>Evezor Web Interface</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="data:,">
-        <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-  h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}.button{display: inline-block; background-color: #e7bd3b; border: none;
-  border-radius: 4px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
-  .button2{background-color: #4286f4;}.button3{background-color: #06876f;}.button4{background-color: #eb3440;}</style>
-    </head>
-    <body>
-    <h1>Evezor Web Interface</h1>
-    <p>Connections:</p> <strong>""" + connections + """</strong>
-    <p>SD Contents:</p> <strong>""" + sd_files + """</strong>
-
-    <p><a href="/led=off"><button class="button button2">neo off</button></a>
-    <a href="/led=on"><button class="button">neo on</button></a>
-    <a href="/?mount_sd"><button class="button button4">mount sd</button></a>
-    </p>
-
-    <p>
-    <a href="/reset"><button class="button button3">reset</button></a>
-    <a href="/light_show"><button class="button button3">light show</button></a>
-    <a href="/broadcast"><button class="button button3">broadcast</button></a>
-    <a href="/!broadcast"><button class="button button3">!broadcast</button></a>
-    <a href="/demo_1"><button class="button button2">demo_1</button></a>
-    </p>
-    <br><br>
-    <p><strong>Send CAN Message</strong></p>
-
-    <form action="/can">
-    <label for="send_arb">ARB:</label>
-    <input type="text" id="send_arb" name="send_arb"><br><br>
-    <label for="m0">m0:</label>
-    <input type="text" id="m0" name="m0"><br>
-
-    <label for="m1">m1:</label>
-    <input type="text" id="m1" name="m1"><br>
-
-    <label for="m2">m2:</label>
-    <input type="text" id="m2" name="m2"><br>
-
-    <label for="m3">m3:</label>
-    <input type="text" id="m3" name="m3"><br>
-
-    <label for="m4">m4:</label>
-    <input type="text" id="m4" name="m4"><br>
-
-    <label for="m5">m5:</label>
-    <input type="text" id="m5" name="m5"><br>
-
-    <label for="m6">m6:</label>
-    <input type="text" id="m6" name="m6"><br>
-
-    <label for="m7">m7:</label>
-    <input type="text" id="m7" name="m7"><br>
-    <input type="submit" value="Submit"></form>
-
-    <br><br><p><strong>Create Subscriber</strong></p>
-
-    <form action="/sub">
-    <label for="sub_num">Broadcast ID:</label>
-    <input type="text" id="sub_num" name="sub_num"><br><br>
-    <label for="send_id">Subscriber ID:</label>
-    <input type="text" id="send_id" name="send_id"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-
-    <br><br><p><strong>Upload Program</strong></p>
-
-    <form action="/prog">
-    <label for="prog">Program:</label>
-    <input type="text" id="prog" name="prog"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-    </body></html>"""
-  return html
-
-async def get_can():
+async def chk_hw():
     while True:
-        if can.any():
-            can.recv(mess)
-            print(str(mess[0]) + ', ' + str(buf[0]))
-        await asyncio.sleep_ms(1)
+        hbt.chk()
+        func_button.chk()
+        await asyncio.sleep_ms(50)
 
-async def buttons():
-    pass
-    # while True:
-    #     # if not func_button.value():
-    #     #     global broadcast_state
-    #     #     print('function button pressed')
-    #     #     broadcast_state = not broadcast_state
-    #     #     broadcast(broadcast_state)
-    #     #     await asyncio.sleep_ms(250)
-    #     if not a_button.value():
-    #             print('make demo 1')
-    #             demo_1()
-    #             await asyncio.sleep_ms(250)
-    #     if not b_button.value():
-    #             print('make demo 2')
-    #     if not c_button.value():
-    #             print('make demo 3')
-    #     # a_button.check()
-    #     # b_button.check()
-    #     # c_button.check()
-    #     # d_button.check()
-    #     await asyncio.sleep_ms(150)
-
-async def do_hbt():
+async def grblchk():
     while True:
-        hbt_led.value(1)
-        await asyncio.sleep(.1)
-        hbt_led.value(0)
-        await asyncio.sleep(.9)
-
-def send_can(request):
-    end = request.find(' HTTP')
-    action = request[13:end]
-    action += '&'
-    print(action)
-    _mess = []
-    for i in range(9):
-        if action.find('&') - action.find('=') > 1:
-            _mess.append(action[action.find('=')+1:action.find('&')])
-            action = action[action.find('&')+1:]
-    arb_id = int(_mess.pop(0))
-    for i in range(len(_mess)): #convert to ints
-        _mess[i] = int(_mess[i])
-    print('sending')
-    print(arb_id)
-    print(_mess)
-    can.send(_mess, arb_id)
-
-def demo_1():
-    global connections
-    neo_status[0] = (0, 0, 20)
-    neo_status.write()
-    if connections == '':
-        for sub in test_prog1:
-            make_sub(sub[0], sub[1])
-            utime.sleep_ms(25)
-        # TODO: make the words show on lcd here
-        utime.sleep_ms(25)
-        can.send([1], 4) #  broadcast
-        utime.sleep_ms(25)
-        can.send([84, 69, 77, 80, 58, 32], 791) # TEMP:
-        utime.sleep_ms(25)
-        can.send([87, 69, 73, 71, 72, 84, 58, 32], 793) # WEIGHT:
-    neo_status[0] = (0, 0, 0)
-    neo_status.write()
-
-def make_sub(sender, receiver):
-    global connections
-    connections += '<p>{}, {}</p>'.format(sender, receiver)
-    board = int(receiver/100)*100
-    print(board)
-    receiver = receiver%100
-    _mess = struct.pack('II', sender, receiver) # sender: receiver
-    beer = []
-    for i in range(len(_mess)):
-        beer.append(int(_mess[i]))
-    print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(receiver), str(sender)))
-
-    can.send(beer, board+49) # sub listener is on id 49
-
-def parse_sub(request):
-    end = request.find(' HTTP')
-    action = request[13:end]
-    print(action)
-    sub = action.split('&')
-    _sub = []
-    for i in range(2):
-        _sub.append(sub[i].split('=')[1])
-        _sub[i] = int(_sub[i])
-    make_sub(_sub[0],_sub[1])
-    # board = int(_sub[1]/100)*100
-    # print(board)
-    # _sub[1] = _sub[1]%100
-    # _mess = struct.pack('II', _sub[0], _sub[1]) # sender: receiver
-    # beer = []
-    # for i in range(len(_mess)):
-    #     beer.append(int(_mess[i]))
-    # print('board: {}, reciever ID: {}, sender id: {}'.format(str(board), str(_sub[1]), str(_sub[0])))
-    # can.send(beer, board+49) # sub listener is on id 49
-
-def parse_program(action):
-    _prog = action.split('=')
-    prog = _prog[1]
-    while(len(prog) > 0):
-        make_sub(int(prog[:4]), int(prog[4:8]))
-        prog = prog[8:]
+        uart1.chk()
+        grbl.chk()
+        await asyncio.sleep_ms(10)
 
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
+    page = None
     # print(request)
     end = request.find(' HTTP')
     action = request[4:end]
     print(action)
-    # process request
-    if request.find('/can') == 4:
-        send_can(request)
-    if request.find('/sub') == 4:
-        parse_sub(request)
-    if request.find('/prog') == 4:
-        parse_program(action)
+    if action == '/cnc':
+        web_page.page = 'cnc'
+    elif action == '/home':
+        web_page.page = None
 
+    if action.find('/can') == 0:
+        # can.send(**web_page.parse_can(action))
+        print(web_page.parse_can(action))
+    elif action.find('/sub') == 0:
+        # can.create_sub(**web_page.parse_sub(action))
+        print(web_page.parse_sub(action))
+    elif action.find('/prog') == 0:
+        can.create_prog(action)
     elif action == '/led=on':
-        neo_status[0] = (0, 25, 0)
-        neo_status.write()
+        neo_status.fill(0, 25, 0)
     elif action == '/led=off':
-        neo_status[0] = (0, 0, 0)
-        neo_status.write()
+        neo_status.fill(0, 0, 0)
     elif action == '/reset':
-        # reset all boards
-        global connections
-        connections = ''
+        can.connections = ''
         can.send([1], 2)
     elif action == '/light_show':
         can.send([1], 1)
@@ -391,90 +82,119 @@ async def handle_client(reader, writer):
         can.send([1], 4)
     elif action == '/!broadcast':
         can.send([0], 4)
-    elif action == '/demo_1':
-        demo_1()
-    elif action == '/?mount_sd':
-        mount_sd()
+    elif action == '/demo1':
+        demo1()
 
-    await writer.awrite(
-        b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
-    # with open(web_page(), 'rb') as response:
-    #     while True:
-    #         buf = response.read(1024)
-    #         if len(buf):
-    #             await writer.awrite(buf)
-    #         if len(buf) < 1024:
-    #             break
-    await writer.awrite(web_page())
-    await writer.aclose()
-    return True
+    elif action == '/?get_state':
+        # print('getting state')
+        grbl.uart.write('?')
+    elif action == '/?unlock':
+        print('unlocking')
+        grbl.unlock()
+    elif action == '/?sleep':
+        print('putting to sleep')
+        grbl.sleep()
+    elif action == '/?wake_up':
+        print('waking up grbl')
+        grbl.wake()
+    elif action == '/?run':
+        print('run file')
+        grbl.run()
+
+    elif action == '/?homex':
+        print('homing x')
+        grbl.home('x')
+    elif action == '/?homey':
+        print('homing y')
+        grbl.home('y')
+    elif action == '/?homez':
+        print('homing z')
+        grbl.home('z')
+    elif action == '/?homea':
+        print('homing a')
+        grbl.home('a')
+    elif action == '/?homeb':
+        print('homing b')
+        grbl.home('b')
+    elif action == '/?homec':
+        print('homing c')
+        grbl.home('c')
 
 
-def broadcast(state):
-    if state:
-        neo_status[0] = (0, 10, 0)
-        neo_status.write()
-    else:
-        neo_status[0] = (0, 0, 0)
-        neo_status.write()
+    elif action == '/?ring_on':
+        can.send([33,33,33], 397)
+    elif action == '/?ring_off':
+        can.send([0,0,0], 397)
+    elif action == '/?suck_on':
+        print('suction on')
+        can.send([1], 399)
+        print('message sent')
+    elif action == '/?suck_off':
+        can.send([0], 399)
 
-def get():
-    can.recv(mess)
-    if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
-        process(mess[0]%100)
-    if mess[0] in subscriptions:
-        process(subscriptions[mess[0]])
-    # print(str(mess[0]) + ', ' + str(buf[0]))
+    elif action == '/?spindle_on':
+        can.send([1], 1492)
+    elif action == '/?spindle_off':
+        can.send([0], 1492)
+    elif action == '/?vise_open':
+        print('vise open')
+        can.send([1], 1196)
+        print('message sent')
+    elif action == '/?vise_close':
+        can.send([0], 1196)
+    elif action == '/?coolant_on':
+        print('vise open')
+        can.send([1], 1195)
+        print('message sent')
+    elif action == '/?coolant_off':
+        can.send([0], 1195)
+    elif action == '/?run_export':
+        print('run export file')
+        sd.opener('t.txt')
+        grbl.run()
 
-def process(id):
-    print(id)
-    if id == 1:
-        light_show()
-    elif id == 2:
-        machine.reset()
-    elif id == 3:
-        neo_status[0] = (buf[0], buf[1], buf[2])
-        neo_status.write()
-    elif id == 4:
-        global broadcast_state
-        broadcast_state = buf[0]
-        broadcast(broadcast_state)
-    elif id == 40:
-        operator._latch(buf[0])
-    elif id == 48:
-        global subscriptions
-        print('clearing subscriptions')
-        subscriptions = {}
-    elif id == 49:
-        global subscriptions
-        # add this to it's own sub list
-        sub = struct.unpack('II', buf)
-        subscriptions[sub[0]] = sub[1] # sender: receiver
-        print(sub)
 
-    elif id == 90:
-        led_0.value(buf[0])
-    elif id == 91:
-        led_1.value(buf[0])
-    elif id == 92:
-        led_2.value(buf[0])
-    elif id == 93:
-        led_3.value(buf[0])
+    elif action.find('/file') == 0:
+        name = action.split('=')[1]
+        print('opening file {}'.format(name))
+        sd.opener(name)
+
+    elif action.find('/direct') == 0:
+        fn = action.split('=')
+        action = fn[1].replace('+', ' ')
+        print('sending direct ' + action)
+        grbl.send_g(action)
+
+    elif action.find('/feeder') == 0:
+        fn = action.split('=')
+        print(fn)
+    
+    elif action.find('/move') == 0:
+        parsed = cnc.parse_move(request)
+        print(parsed)
+        grbl.send_g(cmd + '\n')
 
     else:
         print('unknown command')
 
-
+    await writer.awrite(
+        b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
+    if web_page.page == 'cnc':
+        await writer.awrite(cnc.web_page())
+    else:
+        await writer.awrite(web_page.web_page(can.connections, sd.html_list))
+    await writer.aclose()
+    return True
 
 
 async def main():
-    asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
-    asyncio.create_task(do_hbt())
-    asyncio.create_task(buttons())
-    asyncio.create_task(get_can())
+    asyncio.create_task(asyncio.start_server(handle_client, my_ip, 80))
+    asyncio.create_task(chk_hw())
+    asyncio.create_task(can.chk())
+    asyncio.create_task(grblchk())
     while True:
         await asyncio.sleep(5)
 
-
+gc.collect()
 while True:
     asyncio.run(main())

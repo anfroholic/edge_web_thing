@@ -16,17 +16,17 @@ neo_status = NeoMgr(17, 1)
 neo_status.fill(0,5,5)
 sta = wlan.connect()
 neo_status.fill(0,0,0)
-my_ip = sta.ifconfig()[0]                        
+my_ip = sta.ifconfig()[0]
 api = API(host='10.203.136.47', port=8000, my_ip=my_ip)
 
 def print_state(state, button):
     print(state, button.can_id)
-    
+
 def get_time(state, button):
     if state:
         print(state, button.can_id)
         api.get_queue.append('time')
-        
+
 def make_post(state, button):
     if state:
         print(state, button.can_id)
@@ -42,7 +42,7 @@ def this_show(state, button):
             utime.sleep_ms(300)
             for led in leds:
                 led.off()
-                
+
 def bus_show(state, button):
     if state:
         neo_bus.light_show()
@@ -82,7 +82,7 @@ def demo_1():
         utime.sleep_ms(25)
         can.send(list(b'WEIGHT: '), 793) # WEIGHT:
     neo_status.fill(0, 0, 0)
-    
+
 
 async def chk_hw():
     while True:
@@ -117,7 +117,7 @@ async def handle_client(reader, writer):
         web_page.page = 'cnc'
     elif action == '/home':
         web_page.page = None
-    
+
     if action.find('/can') == 0:
         # can.send(**web_page.parse_can(action))
         print(web_page.parse_can(action))
@@ -152,7 +152,7 @@ async def handle_client(reader, writer):
     return True
 
 
-async def main(): 
+async def main():
     asyncio.create_task(asyncio.start_server(handle_client, my_ip, 80))
     asyncio.create_task(asyncio.start_server(handle_socket, my_ip, 8000))
     asyncio.create_task(chk_hw())
