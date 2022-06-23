@@ -1,8 +1,11 @@
-import esp32
-import machine
-from machine import Pin, ADC, Timer, PWM, UART, CAN, I2C
-from neopixel import NeoPixel
+import json
 import utime
+import machine
+from utilities import *
+import uasyncio as asyncio
+import gc
+gc.collect()
+from machine import I2C
 import struct
 
 print('arm sleeve board')
@@ -15,32 +18,25 @@ subscriptions = {}
 
 # Set up standard components
 machine.freq(240000000)
-hbt_led = Pin(5, Pin.OUT, value=0)
 
-func_button = Pin(36, Pin.IN) # Has external pullup
+hbt = HBT(pin=5, interval=500)
+neo_status = NeoMgr(17, 1)
 
-neo_status_pin = Pin(17, Pin.OUT)
-neo_status = NeoPixel(neo_status_pin, 1)
-neo_status[0] = (0, 0, 0)
-neo_status.write()
 
-can_slp = Pin(2, Pin.OUT, value=0)
-can_slp.value(0)
 
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
 
-buf = bytearray(8)
-mess = [0, 0, 0, memoryview(buf)]
+can = CanMgr(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000, slp_pin=2)
+
 
 i2c = I2C(0, scl=Pin(23), sda=Pin(22), freq=400000)
 
 
 class NeoRing():
     interval = 100
-    # light_green = (2, 60, 12)
-    # green = (6, 90, 24)
-    light_green = (0, 10, 3)
-    green = (1, 15, 6)
+    green = ((0, 10, 3), (1, 25, 6))
+    blue = ((0, 3, 10), (1, 6, 25))
+    red = ((11, 0, 0), (25, 0, 6))
+    colors = (red, blue, green)
 
     def __init__(self, num_leds, pin):
         self.num_leds = num_leds
@@ -48,165 +44,138 @@ class NeoRing():
         self.neo = NeoPixel(self.pin, self.num_leds)
         self.index = 0
         self.start = utime.ticks_ms()
+        self.state = 0
 
-    def write(self, r,g,b):
+    def fill(self, r,g,b):
         for pixel in range(self.num_leds):
             self.neo[pixel] = (r, g, b)
         self.neo.write()
 
-    def check(self):
+    def chk(self):
         if utime.ticks_diff(utime.ticks_ms(), self.start) > self.interval:
             self.start = utime.ticks_ms()
             self.index += 1
             self.index = self.index % self.num_leds
             for i in range(self.num_leds):
                 if self.index == i:
-                    self.neo[i] = self.green
+                    self.neo[i] = self.colors[self.state][1]
                 else:
-                    self.neo[i] = self.light_green
+                    self.neo[i] = self.colors[self.state][0]
             self.neo.write()
 
 
 class Encoder:
+    """
+    AS5048B magnetic encoder
+    https://ams.com/documents/20143/36005/AS5048_DS000298_4-00.pdf
+    """
     resolution = 16384 # 14 bits
-    ang_reg = int(0xFE)
-
-    def __init__(self, name, address, offset):
+    half = 16384/2
+    angle_register = int(0xFE)
+    auto_gain_control_reg = int(0xFA)
+    diagnostics_reg = int(0xFB)
+    zero_reg = int(0x16)
+    
+    
+    def __init__(self, name: str, address: int, invert: bool):
         self.name = name
-        self.adr = address
-        self.offset = offset
+        self.address = address
         self.start = utime.ticks_ms()
         self.interval = 12
-        self.ring_size = 10
-        self.ring = []
-        for i in range(self.ring_size):
-            self.ring.append(0)
+        self.ring_size = 15
+        self.ring = [0 for _ in range(self.ring_size)]
         self.index = 0
+        self.invert = invert
         self.state = None
-        self.raw = None
 
-    def check(self):
+    def chk(self):
         if utime.ticks_diff(utime.ticks_ms(), self.start) > self.interval:
             self.start = utime.ticks_ms()
-            self.state = round(self.average(self.read()), 3)
-            if self.index == 0:
-                print('{}: {}'.format(self.name, self.state))
-
-    def read(self):
-        self.raw = struct.unpack('h', i2c.readfrom_mem(self.adr, self.ang_reg, 2))[0]
-        angle = self.raw/self.resolution * 360.0
-        return angle
-
-    def average(self, input):
-        self.index += 1
-        self.index %= self.ring_size
-        self.ring[self.index] = input
-        total = 0
-        for angle in self.ring:
-            total += angle
-        return total/self.ring_size
-
-
-class Button:
-    def __init__(self, name, pin, pull_up, can_id):
-        self.name = name
-        print(self.name)
-        #self.pin = pin
-        self.pullup = pull_up
-        self.state = None
-        self.can_id = can_id + this_id
-        if pull_up:
-            self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
-        else:
-            self.pin = Pin(pin, Pin.IN)
-        self.state = self.pin.value()
-
-    def check(self):
-        global broadcast_state
-        if self.state != self.pin.value():
-            self.state = not self.state
-            print('{} state: {} can_id: {}'.format(self.name, not self.state, self.can_id))
-            if broadcast_state:
-                can.send([not self.state], self.can_id)
-
-
-class Analog:
-    def __init__(self, name, pin, can_id):
-        self.name = name
-        print(self.name)
-        self.state = None
-        self.can_id = can_id + this_id
-        self.pin = ADC(Pin(pin))
-        self.pin.atten(ADC.ATTN_11DB)
-        self.pin.width(ADC.WIDTH_12BIT)
-        self.old = int(self.pin.read()/16)
-
-    def check(self):
-        self.state = int(self.pin.read()/16)
-        global broadcast_state
-        if abs(self.state - self.old) > 1:
-            self.old = self.state
-            print('{}: {} can_id: {}'.format(self.name, self.state, self.can_id))
-            if broadcast_state:
-                can.send([self.state], self.can_id)
-
-
-class Operator:
-    def __init__(self, name, can_id, broadcast_id):
-        self.name = name
-        self.latch = False
-        self.can_id = can_id
-        self.broadcast_id = this_id + broadcast_id
-        print('{} initialized on can_id {}'.format(self.name, self.can_id))
-        pass
-    def _latch(self, switch):
-        # global buf
-        if switch == 1:
-            self.latch = not self.latch
-            if self.latch:
-                buf[0] = 1
+            self.state = self.average(self.read())
+                
+    def read(self) -> int:
+        high, low = list(i2c.readfrom_mem(self.address, self.angle_register, 2))
+        ang = (high << 6) + low
+        if ang < self.half:          
+            if self.invert:
+                return -ang
             else:
-                buf[0] = 0
-            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
-            if self.can_id + 1 + this_id in subscriptions:
-                process(subscriptions[self.broadcast_id])
+                return ang
+        if self.invert:
+            return -(ang - self.resolution)
+        else:
+            return ang - self.resolution
 
+    def average(self, input) -> int:
+        self.index = (self.index + 1) % self.ring_size
+        self.ring[self.index] = input
+        
+        return int(sum(self.ring)/self.ring_size)
+    
+    @property
+    def angle(self):
+        return self.state/self.resolution * 360.0
+            
+    
+    def get_gain(self):
+        """ 255 is low field 0 is high field """
+        return i2c.readfrom_mem(self.address, self.auto_gain_control_reg, 1)[0]
+    
+    def get_diag(self):
+        raw = i2c.readfrom_mem(self.address, self.diagnostics_reg, 1)[0]
+        return {'mag too low': bool(raw & 8),
+                'mag too high': bool(raw & 4),
+                'CORDIC Overflow': bool(raw & 2),
+                'Offset Compensation finished': bool(raw & 1)
+                }
+    
+    def set_zero(self):
+        pos = i2c.readfrom_mem(self.address, self.angle_register, 2)
+        utime.sleep_ms(10)
+        i2c.writeto_mem(self.address, self.zero_reg, pos)
 
-operator = Operator('_latch', 40, 41)
-
-
-a_button = Button('a_button', 32, True, 50)
-b_button = Button('b_button', 33, True, 51)
-
-mr_theta_coder = Encoder(name='mr_theta_coder', address=67, offset=0)
-mrs_phi_coder = Encoder(name='mrs_phi_coder', address=64, offset=0)
+theta_coder = Encoder(name='mr_theta_coder', address=67, invert=True)
+phi_coder = Encoder(name='mrs_phi_coder', address=64, invert=True)
 
 neo_phi = NeoRing(pin=21, num_leds=12)
 neo_theta = NeoRing(pin=13, num_leds=12)
 
+def print_state(state, button):
+    print(state, button.can_id)
+    
+def phi_color(state, *args):
+    if state:
+        neo_phi.state = (neo_phi.state + 1) % 3
 
-# Set up hbt timer
-hbt_state = 0
-hbt_interval = 500
-start = utime.ticks_ms()
-next_hbt = utime.ticks_add(start, hbt_interval)
-hbt_led.value(hbt_state)
+def theta_color(state, *args):
+    if state:
+        neo_theta.state = (neo_theta.state + 1) % 3
+    
+func_button = Button('func button', 36, False, 54, print_state)
+a_button = Button('a_button', 32, True, 50, phi_color)
+b_button = Button('b_button', 33, True, 51, theta_color)
 
-def chk_hbt():
-    global next_hbt
-    global hbt_state
-    now = utime.ticks_ms()
-    if utime.ticks_diff(next_hbt, now) <= 0:
-        if hbt_state == 1:
-            hbt_state = 0
-            hbt_led.value(hbt_state)
-            #print("hbt")
-        else:
-            hbt_state = 1
-            hbt_led.value(hbt_state)
 
-        next_hbt = utime.ticks_add(next_hbt, hbt_interval)
+async def chk_hw():
+    while True:
+        hbt.chk()
+        phi_coder.chk()
+        theta_coder.chk()
+        neo_phi.chk()
+        neo_theta.chk()
+        a_button.chk()
+        b_button.chk()
+        func_button.chk()
+        await asyncio.sleep_ms(20)
 
+
+async def post_angles():
+    while True:
+        # print(theta_coder.angle, phi_coder.angle)
+        print('theta: {}, phi: {}'.format(round(theta_coder.angle, 2), round(phi_coder.angle, 2)))
+        await asyncio.sleep_ms(100)
+        
+        
 def this_show():
     leds = [led_0, led_1, led_2, led_3]
     for led in leds:
@@ -215,40 +184,6 @@ def this_show():
     for led in leds:
         led.value(0)
 
-
-def light_show():
-    neo_status[0] = (0, 33, 0)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 33)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (33, 0, 0)
-    neo_status.write()
-    utime.sleep_ms(250)
-    neo_status[0] = (0, 0, 0)
-    neo_status.write()
-
-def broadcast(state):
-    if state:
-        neo_status[0] = (0, 10, 0)
-        neo_status.write()
-    else:
-        neo_status[0] = (0, 0, 0)
-        neo_status.write()
-
-def send(arb, msg):
-    global broadcast_state
-    if broadcast_state:
-        can.send(msg, arb)
-
-def get():
-    can.recv(mess)
-    if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
-        process(mess[0]%100)
-    if mess[0] in subscriptions:
-        process(subscriptions[mess[0]])
-    # print(str(mess[0]) + ', ' + str(buf[0]))
 
 def process(id):
     print(id)
@@ -282,18 +217,33 @@ def process(id):
         print('unknown command')
 
 
-light_show()
+neo_status.light_show()
+neo_phi.fill(5,0,0)
+
+
 while True:
-    chk_hbt()
+    """make sure i2c devices are present"""
+    found = True
+    connected = i2c.scan()
+    print(connected)
+    if phi_coder.address not in connected:
+        found = False
+    if theta_coder.address not in connected:
+        found = False
+    if found:
+        print('encoders present')
+        break
+    print('no encoder found')
+    utime.sleep_ms(500)
 
-    if(can.any()):
-        get()
+neo_phi.fill(0,10,10)
+        
 
-    if not func_button.value():
-        print('function button pressed')
-        broadcast_state = not broadcast_state
-        broadcast(broadcast_state)
-        utime.sleep_ms(200)
-    agents = [a_button, b_button, neo_phi, neo_theta, mrs_phi_coder]
-    for agent in agents:
-        agent.check()
+async def main():
+    asyncio.create_task(chk_hw())
+    asyncio.create_task(post_angles())
+    while True:
+        await asyncio.sleep(5)
+
+while True:
+    asyncio.run(main())
