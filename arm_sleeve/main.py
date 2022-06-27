@@ -36,7 +36,7 @@ class NeoRing():
     green = ((0, 10, 3), (1, 25, 6))
     blue = ((0, 3, 10), (1, 6, 25))
     red = ((11, 0, 0), (25, 0, 6))
-    colors = (red, blue, green)
+    colors = (red, green, blue)
 
     def __init__(self, num_leds, pin):
         self.num_leds = num_leds
@@ -44,7 +44,7 @@ class NeoRing():
         self.neo = NeoPixel(self.pin, self.num_leds)
         self.index = 0
         self.start = utime.ticks_ms()
-        self.state = 0
+        self.state = 1
 
     def fill(self, r,g,b):
         for pixel in range(self.num_leds):
@@ -77,39 +77,28 @@ class Encoder:
     zero_reg = int(0x16)
     
     
-    def __init__(self, name: str, address: int, invert: bool):
+    def __init__(self, name: str, address: int, invert: bool, offset: int):
         self.name = name
         self.address = address
-        self.start = utime.ticks_ms()
-        self.interval = 12
-        self.ring_size = 15
-        self.ring = [0 for _ in range(self.ring_size)]
+        self.ring_size = 8
+        self.ring = [0] * self.ring_size
         self.index = 0
         self.invert = invert
-        self.state = None
+        self.offset = offset
 
-    def chk(self):
-        if utime.ticks_diff(utime.ticks_ms(), self.start) > self.interval:
-            self.start = utime.ticks_ms()
-            self.state = self.average(self.read())
-                
-    def read(self) -> int:
-        high, low = list(i2c.readfrom_mem(self.address, self.angle_register, 2))
-        ang = (high << 6) + low
-        if ang < self.half:          
-            if self.invert:
-                return -ang
-            else:
-                return ang
-        if self.invert:
-            return -(ang - self.resolution)
-        else:
-            return ang - self.resolution
-
-    def average(self, input) -> int:
-        self.index = (self.index + 1) % self.ring_size
-        self.ring[self.index] = input
+    def chk(self) -> None:
+        high, low = list(i2c.readfrom_mem(self.address, self.angle_register, 2))  # read from device
+        self.index = (self.index + 1) % self.ring_size  # count around ring averager
         
+        ang = (high << 6) + low - self.offset
+        if ang > self.half:
+            ang = ang - self.resolution
+        self.ring[self.index] = ang  # add new value to ring
+                
+    @property
+    def state(self):                    
+        if self.invert:
+            return -int(sum(self.ring)/self.ring_size) #average ring buffer and invert
         return int(sum(self.ring)/self.ring_size)
     
     @property
@@ -134,8 +123,8 @@ class Encoder:
         utime.sleep_ms(10)
         i2c.writeto_mem(self.address, self.zero_reg, pos)
 
-theta_coder = Encoder(name='mr_theta_coder', address=67, invert=True)
-phi_coder = Encoder(name='mrs_phi_coder', address=64, invert=True)
+theta_coder = Encoder(name='mr_theta_coder', address=67, invert=True, offset=3076)
+phi_coder = Encoder(name='mrs_phi_coder', address=64, invert=True, offset=3177)
 
 neo_phi = NeoRing(pin=21, num_leds=12)
 neo_theta = NeoRing(pin=13, num_leds=12)
@@ -172,7 +161,7 @@ async def chk_hw():
 async def post_angles():
     while True:
         # print(theta_coder.angle, phi_coder.angle)
-        print('theta: {}, phi: {}'.format(round(theta_coder.angle, 2), round(phi_coder.angle, 2)))
+        print('theta: {}, phi: {}'.format(theta_coder.angle, phi_coder.angle, 2))
         await asyncio.sleep_ms(100)
         
         
