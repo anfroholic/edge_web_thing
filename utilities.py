@@ -1,7 +1,7 @@
 
 """
-version: 0.1
-6/4/22
+version: 0.11
+7/29/22
 """
 
 from machine import Pin, ADC, CAN, UART
@@ -20,32 +20,32 @@ class UartMgr:
         self.uart = UART(bus, tx=tx, rx=rx, baudrate=baudrate)
         self.buf = ''
         self.lines = []
-        
+
     def chk(self):
         if self.uart.any():
             self.buf += self.uart.read().decode('utf8')
-            
+
             while True:
                 # get lines
                 index = self.buf.find('\r\n')
                 if index == -1:
                     break
-                
+
                 self.lines.append(self.buf[:index])
                 self.buf = self.buf[(index + 2):]
-                
+
     def write(self, msg):
         self.uart.write(msg)
-        
-    
+
+
     def any(self):
         if self.lines:
             return True
         return False
-                    
+
     def readline(self):
         return self.lines.pop(0)
-    
+
 class CanMgr:
     def __init__(self, bus, *, tx, rx, extframe, mode, baudrate, slp_pin):
         self.can = CAN(bus, tx=tx, rx=rx, extframe=extframe, mode=mode, baudrate=baudrate)
@@ -55,7 +55,7 @@ class CanMgr:
         self.msg = [0,0,0, memoryview(self.buf)]
         self.subscriptions = {}
         self.connections = ''
-        
+
     async def chk(self):
         while True:
             while True:
@@ -64,10 +64,10 @@ class CanMgr:
                 self.can.recv(self.msg)
                 print(self.msg)
             await asyncio.sleep_ms(1)
-            
+
     def send(self, data, arb_id):
         self.can.send(list(data), arb_id)
-    
+
     def create_sub(self, sub):
         self.subscriptions[sub['brdcst']] = sub['sub']
 
@@ -77,8 +77,8 @@ class SDMgr:
         self.slot = slot
         self.mounted = False
         self.sd = None # card object
-        self.html_list = None
-        
+        self.html_list = '<p>no sd files</p>'
+
     def mount(self):
         if not self.mounted:
             self.sd = machine.SDCard(slot=self.slot)
@@ -86,33 +86,33 @@ class SDMgr:
         print('sd contents:')
         print(self.files)
         self.html_list = self.html_file_list()
-        
+
     @property
     def files(self):
         return uos.listdir('/sd')
-        
+
     def html_file_list(self):
         return ''.join(['<p>{}: {}</p>'.format(i, f) for i, f in enumerate(uos.listdir('/sd'))])
-    
+
     def _open(self, filename):
         with open('/sd/{}'.format(filename), 'r') as self.f:
             for line in self.f:
                 yield line.strip()
-    
+
     def opener(self, filename):
         if type(filename) is int:
             print('opening with index')
             self.gen = self._open(self.files[filename])
         else:
             self.gen = self._open(filename)
-    
+
     def readline(self):
         try:
             return next(self.gen)
         except StopIteration:
             print('eof')
             return None
-        
+
 
 class Button:
     def __init__(self, name, pin, pull_up, can_id, callback):
@@ -187,11 +187,11 @@ class HBT:
 
     def chk(self):
         if utime.ticks_diff(self.next, utime.ticks_ms()) <= 0:
-            
+
             if self.state == 1:
                 self.state = 0
                 self.pin.value(self.state)
-                
+
             else:
                 self.state = 1
                 self.pin.value(self.state)
@@ -223,15 +223,13 @@ class NeoMgr:
         for p in range(self.num_pix):
             self.neo[p] = (r, g, b)
         self.neo.write()
-        
+
     def chk(self):
         if self.state == 'rainbow':
             self.rainbow()
-        
+
     def rainbow(self):
         for i in range(self.num_pix):
             self.neo[i] = (self.rbow[self.r_idx], self.rbow[(self.r_idx + 12)%36], self.rbow[(self.r_idx + 24)%36])
         self.neo.write()
         self.r_idx = (self.r_idx + 1) % 36
-
-
