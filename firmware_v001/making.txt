@@ -1,0 +1,67 @@
+
+docker cp friendly_edison:/root/upython/micropython/ports/esp32/ C:\upy
+
+
+
+
+apt -y install python3 git
+apt -y install python3-pip
+pip install --upgrade pip
+apt install libusb-1.0
+
+
+apt-get -y install git wget libncurses-dev flex bison gperf python python-pip python-setuptools python-serial python-click python-cryptography python-future python-pyparsing python-pyelftools cmake ninja-build ccache
+apt -y install flex bison gperf gettext python3-setuptools cmake ninja-build ccache libssl-dev automake texinfo help2man libtool libtool-bin libbz2-dev libreadline-dev libsqlite3-dev llvm libncurses5-dev libncursesw5-dev tk-dev liblzma-dev
+
+git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+apt-get install libusb-1.0
+
+
+############ run below #############
+
+docker run -it ubuntu:latest
+apt update
+apt-get -y install git libncurses5-dev flex bison gperf python3 python3-pip python3-setuptools python-is-python3 cmake ninja-build ccache libusb-1.0
+pip install --upgrade pip
+git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+./install.sh
+. ./export
+
+################# use below
+
+docker run -it ubuntu:latest
+apt update
+apt-get -y install git libncurses5-dev flex bison gperf python3 python3-pip python3-setuptools python-is-python3 cmake ninja-build ccache libusb-1.0 python3-pyparsing python3-pyelftools
+pip install --upgrade pip
+git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+./install.sh
+. ./export
+
+
+####### git clone
+
+git clone https://github.com/micropython/micropython
+cd micropython
+git fetch origin pull/7381/head
+git checkout -b pullrequest FETCH_HEAD
+
+
+
+######## transfer from container
+docker cp confident_borg:./upy/micropython/ports/esp32/build-GENERIC/firmware.bin C:\upy
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,413 +1,141 @@
-
-import esp
-esp.osdebug(None)
-import gc
-gc.collect()
-from gcode_conversion import *  #asyncio does not seem to be able to make outside calls from within handle_client
+import wlan
+from machine import Pin
 import json
-import uos
 import utime
-from machine import Pin, UART, CAN
 import machine
-import network
-from neopixel import NeoPixel
-
+from utilities import *
 import uasyncio as asyncio
+import web_page
+import cnc
+import gc
+import config
+gc.collect()
 
-print(machine.freq())
-machine.freq(240000000)
-print(machine.freq())
+pins = config.grbl_1_4
 
-networks = {'Grammys_IoT':'AAGI96475', 'Herrmann': 'storage18', 'PumpingStationOne': 'ps1frocks'}
-port = 80
-
-
-
-# set up pins
-hbt_led = Pin(5, Pin.OUT)
-neo_status_pin = Pin(17, Pin.OUT)
-neo_status = NeoPixel(neo_status_pin, 1)
-func_button = Pin(36, Pin.IN) # Has external pullup
-# sd_detect = Pin(10, Pin.IN, Pin.PULL_DOWN)
-
-print('GRBL board test')
-print('V1.5')
-
-#network
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-
-aps = wlan.scan()
-print(aps)
-neo_status[0] = (0, 10, 0)
-neo_status.write()
-
-for i in range(len(aps)):
-    station = aps[i][0].decode('ascii')
-    if station in networks:
-        print('connecting to ' + station + ', '+ networks[station])
-        wlan.connect(station, networks[station])
+neo_status = NeoMgr(pins['neo_status'], 1)
+neo_status.fill(0,5,5)
+sta = wlan.connect()
+neo_status.fill(0,0,0)
+my_ip = sta.ifconfig()[0]
 
 
-neo_status[0] = (0, 0, 10)
-neo_status.write()
+# detect = Pin(25, Pin.IN)
+uart1 = UartMgr(1, baudrate=115200, rx=pins['uart_rx'], tx=pins['uart_tx'])
+hbt = HBT(pin=pins['hbt'], interval=500)
+can = CanMgr(0, tx=pins['can_tx'], rx=pins['can_rx'], extframe=True, mode=CAN.NORMAL, baudrate=250000, slp_pin=pins['can_slp'])
+sd = SDMgr(slot=pins['sd_slot'])
+try:
+    sd.mount()
+except OSError:
+    print('sd failed to mount')
+    pass
+grbl = cnc.GRBL(sd, can, uart1, hbt_int=8000, debug=True, resets=True)
 
-while not wlan.isconnected():
-    print(".", end = "")
-    utime.sleep_ms(250)
+def print_state(state, button):
+    print(state, button.can_id)
+func_button = Button('func button', 36, False, 54, print_state)
 
-print('Connection successful')
-print(wlan.ifconfig())
-
-my_ip = wlan.ifconfig()[0]
-neo_status[0] = (0, 10, 0)
-neo_status.write()
-utime.sleep_ms(250)
-neo_status[0] = (0, 0, 0)
-neo_status.write()
-
-
-
-# uos.mount(sd, "/sd")
-# print('sd contents:')
-# print(uos.listdir('/sd'))
-# utime.sleep(.25)
-
-#set up other comms
-uart1 = UART(1, baudrate=115200, tx=22, rx=23)
-
-
-def web_page():
-
-
-  html = """
-<html>
-    <head>
-        <title>Evezor Web Interface</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="data:,">
-        <style>html{font-family: Helvetica; display:inline-block; margin: 0px auto; text-align: center;}
-  h1{color: #0F3376; padding: 2vh;}p{font-size: 1.5rem;}.button{display: inline-block; background-color: #e7bd3b; border: none;
-  border-radius: 4px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}
-  .button2{background-color: #4286f4;}.button3{background-color: #06876f;}.button4{background-color: #E1341E;}</style>
-    </head>
-    <body>
-    <h1>Evezor Web Interface</h1>
-    <p>Connection State: <strong>""" + grbl.connection_state + """</strong></p>
-    <p>State: <strong>""" + grbl.state + """</strong></p>
-    <p>Running: <strong>""" + grbl.is_running + """</strong></p>
-
-
-    <p><a href="/?led=off"><button class="button button2">neo off</button></a><a href="/?led=on"><button class="button">neo on</button></a>
-    <a href="/?connect"><button class="button button2">connect</button></a><a href="/?run"><button class="button button2">run</button></a></p>
-
-    <p><a href="/?get_state"><button class="button button3">get_state</button></a><a href="/?unlock"><button class="button button3">unlock</button></a>
-    <a href="/?sleep"><button class="button button3">sleep</button></a><a href="/?wake_up"><button class="button button3">wake up</button></a></p>
-
-    <p><a href="/?homex"><button class="button button2">homex</button></a><a href="/?homey"><button class="button button2">homey</button></a>
-    <a href="/?homexy"><button class="button button2">homexy</button></a><a href="/?homez"><button class="button button2">homez</button></a></p>
-
-    <p><a href="/?mount_sd"><button class="button button3">mount sd</button></a><a href="/?nuke"><button class="button button4">NUKE</button></a><a href="/?get_line"><button class="button button3">get_line</button></a></p>
-
-    <br><br>
-    <p><strong>Move Machine</strong></p>
-
-    <form action="/move.php">
-    <label for="send_x">X:</label>
-    <input type="text" id="x" name="x"><br><br>
-    <label for="send_y">Y:</label>
-    <input type="text" id="y" name="y"><br><br>
-    <label for="send_z">Z:</label>
-    <input type="text" id="z" name="z"><br><br>
-    <label for="send_a">A:</label>
-    <input type="text" id="a" name="a"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-    <p><strong>file</strong></p>
-    <form action="/file.php">
-    <label for="file">file:</label>
-    <input type="text" id="file" name="file"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-
-    <p><strong>direct</strong></p>
-    <form action="/direct.php">
-    <label for="direct">direct:</label>
-    <input type="text" id="direct" name="direct"><br><br>
-    <input type="submit" value="Submit">
-    </form>
-    </body></html>"""
-  return html
-
-class GRBL:
-    def __init__(self):
-        self.connection_state = 'not connected'
-        self.is_running = 'False'
-
-        self.to_parse = ''
-        self.index = 0
-        self.line = ''
-        self.state = ''
-        self.sd_state = 'unmounted'
-        self.file_blurb = ''
-
-        self.blurb_index = 0
-        self.j_blurb = {}
-        self.f = None
-        self.queue = {}
-        self.modal = ['move.linear', 'move.rapid', 'sleep']
-
-    def parse_move(self, request):
-        """
-        parse move that came from web socket
-        """
-        end = request.find(' HTTP')
-        action = request[14:end]
-        action += '&'
-        # print('parsing request')
-        # print(action)
-        axes = ['x', 'y', 'z', 'a']
-        parsed = {}
-        for axis in axes:
-            index = action.find('&')
-            if action[2: index] != '':
-                parsed[axis] = action[2: index]
-            action = action[(index + 1):]
-        # print(parsed)
-        parsed['command'] = 'move.linear'
-        parsed['feed'] = 2000
-        return parsed
-
-    def send(self, message):
-        """
-        send message to grbl board
-        """
-        if self.connection_state == 'connected':
-            uart1.write(message + '\n')
-        else:
-            print(message)
-
-    def get_line(self):
-        """
-        find line in text from grbl over uart
-        """
-        if self.to_parse != '':
-            # print('trying to parse')
-            self.index = self.to_parse.find('\r')
-            # print(self.to_parse)
-            # print(self.index)
-            if len(self.to_parse) > 0: # check for empty line
-                if self.index > 0:
-                    self.line = self.to_parse[0:self.index]
-                    self.to_parse = self.to_parse[(self.index + 2):]
-                else:
-                    self.to_parse = self.to_parse[2:]
-                self.handler(self.line)
-
-    def handler(self, line):
-        """
-        handler for incomming uart comms from grbl
-        this also will send blurbs to grbl when running file from sd card
-        """
-        # print(line)
-        if line == 'ok':
-            if self.is_running == 'True':
-                # print('todo: finish handler')
-                self.get_next()
-        elif line[0] == '<':
-            print('update machine info')
-            print(line)
-            seg = line.split('|')
-            grbl.state = seg[0][1:]
-        elif line == '[MSG:Evezor]':
-            print('got evezor message')
-        else:
-            print(line)
-            # print('maybe need some other command thing')
-
-    def get_next(self):
-        """
-        gets next line from sd card file
-        """
-        if self.queue:
-            # if a message is in queue it probably means it's a can bus message.
-            # a dwell has been sent in it's place last round and now it should send
-            print('message in queue')
-            print(convert(**self.queue))
-            self.queue = {}
-
-        if len(self.file_blurb) < 200:
-            self.file_blurb += self.f.read(100)
-
-        self.blurb_index = self.file_blurb.find('\r')
-        if len(self.file_blurb) > 0:
-            if self.blurb_index > 0:
-                self.j_blurb = json.loads(self.file_blurb[0:self.blurb_index])
-                self.file_blurb = self.file_blurb[(self.blurb_index + 2):]
-                # self.j_blurb = json.loads(self.blurb)
-                # print(self.j_blurb)
-                self.parse_message(self.j_blurb)
-        else:
-            print('must be the end of the file, maybe consider stop running')
-            if self.queue:
-                print('oops, guess there was one more command')
-                self.get_next()
-            else:
-                self.is_running = 'False'
-                print('closing file')
-                self.f.close()
-
-    def file_opener(self, name):
-        # TODO: make it so it doesn't break if file does not exist
-        self.f = open(name, 'r')
-
-    def parse_message(self, msg):
-        """
-        send message to converter or handle canbus requests
-        """
-        # print('parser')
-        if msg['command'] in self.modal:
-            # print('modal command')
-            self.send(convert(**msg))
-        else:
-            # we need to wait until grbl is finished working on modal commands and returns [MSG:Evezor]
-            # print('pausing')
-            self.queue = msg
-            self.send('G4 P.01')
-
-
-
-async def ck_buttons():
+async def chk_hw():
     while True:
-        if not func_button.value():
-            print('function button pressed')
-            await asyncio.sleep_ms(250)
+        hbt.chk()
+        func_button.chk()
         await asyncio.sleep_ms(50)
 
-async def do_hbt():
+async def grblchk():
     while True:
-        hbt_led.value(1)
-        await asyncio.sleep(.1)
-        hbt_led.value(0)
-        await asyncio.sleep(.9)
+        uart1.chk()
+        grbl.chk()
+        await asyncio.sleep_ms(10)
 
-async def handle_uart():
-    while True:
-        if uart1.any():
-            grbl.to_parse += uart1.read(uart1.any()).decode('ascii')
-            # print(grbl.to_parse)
-        await asyncio.sleep_ms(5)
+cmds = {
+    '/led=on': lambda: neo_status.fill(0, 25, 0),
+    '/led=off': lambda: neo_status.fill(0, 0, 0),
+    '/light_show': lambda: can.send([1], 1),
+    '/broadcast': lambda: can.send([1], 4),
+    '/!broadcast': lambda: can.send([0], 4),
+    '/demo1': lambda: demo1()
+}
 
-async def parse_grbl():
-    while True:
-        grbl.get_line()
-        await asyncio.sleep_ms(5)
+cmds.update(**grbl.web_buts())
+
 
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
+    page = None
     # print(request)
-
-    # find the action
     end = request.find(' HTTP')
     action = request[4:end]
     print(action)
+    if action == '/cnc':
+        web_page.page = 'cnc'
+    elif action == '/home':
+        web_page.page = None
 
-    # process request
-    if action.find('/move') == 4:
-        parsed = parse_move(request)
-        print(convert(**parsed))
+    if action in cmds:
+        cmds[action]()
+    elif action.find('/move') == 0:
+        grbl.parse_move(request)
 
-    elif action == '/?led=on':
-        print('turn led on')
-        neo_status[0] = (0, 25, 0)
-        neo_status.write()
-    elif action == '/?led=off':
-        print('turn led off')
-        neo_status[0] = (0, 0, 0)
-        neo_status.write()
-    elif action == '/?connect':
-        print('connecting')
-        grbl.connection_state = 'connected'
-    elif action == '/?run':
-        print('run')
-        grbl.is_running = 'True'
-    elif action == '/?get_state':
-        # print('getting state')
-        uart1.write('?')
-    elif action == '/?unlock':
-        print('unlocking')
-        uart1.write('$X\n')
-    elif action == '/?sleep':
-        print('putting to sleep')
-        uart1.write('$SLP\n')
-    elif action == '/?wake_up':
-        print('waking up grbl')
-        uart1.write(b'\x18')
-        uart1.write('\n')
-    elif action == '/?homex':
-        print('homing x')
-        uart1.write('$HX\n')
-    elif action == '/?homey':
-        print('homing y')
-        uart1.write('$HY\n')
-    elif action == '/?homexy':
-        print('homing xy')
-        uart1.write('$HXY\n')
-    elif action == '/?homez':
-        print('homing z')
-        uart1.write('$HZ\n')
-    elif action == '/?mount_sd':
-        sd = machine.SDCard(slot=3)
-        print('mounting sd')
-        uos.mount(sd, "/sd")
-        print('sd contents:')
-        print(uos.listdir('/sd'))
-    elif action == '/?nuke':
-        print('nuking board')
-        uos.remove('main.py')
-        machine.reset()
+    elif action.find('/offset') == 0:
+        grbl.set_offset(request)
+    elif action.find('/can') == 0:
+        # can.send(**web_page.parse_can(action))
+        print(web_page.parse_can(action))
+    elif action.find('/sub') == 0:
+        # can.create_sub(**web_page.parse_sub(action))
+        print(web_page.parse_sub(action))
+    elif action.find('/prog') == 0:
+        can.create_prog(action)
+    elif action == '/reset':
+        can.connections = ''
+        can.send([1], 2)
+    elif action == '/?run_export':
+        print('run export file')
+        sd.opener('t.txt')
+        grbl.run()
     elif action.find('/file') == 0:
-        print('opening file')
-        fn = action.split('=')
-        name = '/sd/' + fn[1]
-        grbl.file_opener(name)
+        name = action.split('=')[1]
+        print('opening file {}'.format(name))
+        sd.opener(name)
     elif action.find('/direct') == 0:
         fn = action.split('=')
         action = fn[1].replace('+', ' ')
         print('sending direct ' + action)
-        action = action + '\n'
-        uart1.write(action)
+        grbl.send_g(action)
+    elif action.find('/feeder') == 0:
+        fn = action.split('=')
+        print(fn)
 
-    elif action == '/?get_line':
-        print('getting next')
-        grbl.get_next()
     else:
         print('unknown command')
 
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
-    # with open(web_page(), 'rb') as response:
-    #     while True:
-    #         buf = response.read(1024)
-    #         if len(buf):
-    #             await writer.awrite(buf)
-    #         if len(buf) < 1024:
-    #             break
-    await writer.awrite(web_page())
+    if web_page.page == 'cnc':
+        await writer.awrite(grbl.web_page())
+    else:
+        await writer.awrite(web_page.web_page(can.connections, sd.html_list))
     await writer.aclose()
     return True
 
+test_move = [
+{'cmd': 'move.linear', 'x':1000, 'feed':10000},
+{'cmd': 'move.linear', 'x':0, 'feed':10000},
+None
+]
+grbl.buf = test_move
 
+gc.collect()
+print(gc.mem_free())
 async def main():
-    asyncio.create_task(asyncio.start_server(handle_client, my_ip, port))
-    asyncio.create_task(do_hbt())
-    asyncio.create_task(ck_buttons())
-    asyncio.create_task(handle_uart())
-    asyncio.create_task(parse_grbl())
+    asyncio.create_task(asyncio.start_server(handle_client, my_ip, 80))
+    asyncio.create_task(chk_hw())
+    asyncio.create_task(can.chk())
+    asyncio.create_task(grblchk())
     while True:
         await asyncio.sleep(5)
 
-grbl = GRBL()
+gc.collect()
 while True:
     asyncio.run(main())

@@ -1,0 +1,136 @@
+{
+"board":{
+  "output_a": {
+    "pin": 33,
+    "id": 10,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "b"
+    ],
+    "blob": 7,
+    "sub_params": {
+      "invert": {
+        "state": true,
+        "p_type": "Variable",
+        "id": 11,
+        "d_type": [
+          "bool",
+          "b"
+        ],
+        "blob": 7
+      }
+    }
+  },
+  "output_b": {
+    "pin": 25,
+    "id": 20,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "b"
+    ],
+    "blob": 7,
+    "sub_params": {
+      "invert": {
+        "state": false,
+        "p_type": "Variable",
+        "id": 21,
+        "d_type": [
+          "bool",
+          "b"
+        ],
+        "blob": 7
+      }
+    }
+  },
+  "operator": {
+    "id": 100,
+    "state": null,
+    "p_type": "Operator",
+    "code": "iris.p[33].state + iris.p[34].state",
+    "d_type": [
+      "str",
+      "b"
+    ],
+    "blob": 7,
+    "sub_params": {}
+  },
+  
+  "switch": {
+    "id": 120,
+    "state": null,
+    "p_type": "Switch",
+    "d_type": [
+      "switch",
+      "B"
+    ],
+    "switch": [10,20,30,40,50],
+    "names": ["off", "green", "yellow", "red", "blue"],
+    "blob": 7
+  },
+  "greater_than": {
+    "id": 130,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "int",
+      "b"
+    ],
+    "operator": ">",
+    "blob": 7
+  },
+  "divide": {
+    "id": 140,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "float",
+      "f"
+    ],
+    "operator": "/",
+    "blob": 7
+  },
+  "add": {
+    "id": 150,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "int",
+      "H"
+    ],
+    "operator": "+",
+    "blob": 7
+  },
+  "truth": {
+    "id": 160,
+    "state": null,
+    "p_type": "Branch",
+    "true": 150,
+    "false": 140,
+    "d_type": [
+      "bool",
+      "b"
+    ],
+    "blob": 7
+  },
+  "timer": {
+    "id": 170,
+    "state": null,
+    "p_type": "Timer",
+    "d_type": [
+      "int",
+      "H"
+    ],
+    "blob": 7
+  }
+}
+}

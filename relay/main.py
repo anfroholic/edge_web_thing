@@ -3,7 +3,8 @@ import machine
 from machine import Pin, ADC, Timer, PWM, UART, CAN
 from neopixel import NeoPixel
 import utime
-import machine
+import machine as upython
+import struct
 
 print('relay board')
 print('v1.00p')
@@ -11,7 +12,7 @@ print('initializing')
 this_id = 600
 print(this_id)
 broadcast_state = False
-self_broadcast = this_id + 50
+subscriptions = {}
 
 # Set up standard components
 machine.freq(240000000)
@@ -39,23 +40,62 @@ start = utime.ticks_ms()
 next_hbt = utime.ticks_add(start, hbt_interval)
 hbt_led.value(hbt_state)
 
+class Button:
+    def __init__(self, name, pin, pull_up, can_id):
+        self.name = name
+        print(self.name)
+        #self.pin = pin
+        self.pullup = pull_up
+        self.state = None
+        self.can_id = can_id + this_id
+        if pull_up:
+            self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
+        else:
+            self.pin = Pin(pin, Pin.IN)
+        self.state = self.pin.value()
+
+    def check(self):
+        global broadcast_state
+        if self.state != self.pin.value():
+            self.state = not self.state
+            print('{} state: {} can_id: {}'.format(self.name, not self.state, self.can_id))
+            if broadcast_state:
+                can.send([not self.state], self.can_id)
 
 
 # Set up peripherals
-button_1_state = 1
-button_1_can_id = 0 # id + self_broadcast
-button_1 = Pin(33, Pin.IN, Pin.PULL_UP)
 
-button_2_state = 1
-button_2_can_id = 1
-button_2 = Pin(32, Pin.IN, Pin.PULL_UP)
+button_1 = Button('button_1', 26, True, 50)
+button_2 = Button('button_2', 25, True, 51)
+button_3 = Button('button_3', 33, True, 53)
+button_4 = Button('button_4', 32, True, 54)
+
 
 relay_1 = Pin(22, Pin.OUT, value=0)
 relay_2 = Pin(21, Pin.OUT, value=0)
 relay_3 = Pin(19, Pin.OUT, value=0)
 relay_4 = Pin(23, Pin.OUT, value=0)
 
-
+class Operator:
+    def __init__(self, name, can_id, broadcast_id):
+        self.name = name
+        self.latch = False
+        self.can_id = can_id
+        self.broadcast_id = this_id + broadcast_id
+        print('{} initialized on can_id {}'.format(self.name, self.can_id))
+        pass
+    def _latch(self, switch):
+        # global buf
+        if switch == 1:
+            self.latch = not self.latch
+            if self.latch:
+                buf[0] = 1
+            else:
+                buf[0] = 0
+            print('latch: {} on id: {}'.format(buf[0], self.broadcast_id))
+            if self.can_id + 1 + this_id in subscriptions:
+                process(subscriptions[self.broadcast_id])
+operator = Operator('_latch', 40, 41)
 
 
 def chk_hbt():
@@ -72,6 +112,22 @@ def chk_hbt():
             hbt_led.value(hbt_state)
 
         next_hbt = utime.ticks_add(next_hbt, hbt_interval)
+
+def this_show():
+    relay_1.value(1)
+    utime.sleep_ms(300)
+    relay_2.value(1)
+    utime.sleep_ms(300)
+    relay_3.value(1)
+    utime.sleep_ms(300)
+    relay_4.value(1)
+    utime.sleep_ms(300)
+    relay_1.value(0)
+    relay_2.value(0)
+    relay_3.value(0)
+    relay_4.value(0)
+
+
 
 def light_show():
     neo_status[0] = (0, 33, 0)
@@ -108,48 +164,50 @@ def send(arb, msg):
 
 def get():
     can.recv(mess)
-    # print(str(mess[0]) + ', ' + str(buf[0]))
+    if mess[0] < 100 or (mess[0] >= this_id and mess[0] <= (this_id+99)):
+        process(mess[0]%100)
+    if mess[0] in subscriptions:
+        process(subscriptions[mess[0]])
 
-    # these are messages for all boards
-    if mess[0] <= 100:
-        if mess[0] == 1:
-            light_show()
-        elif mess[0] == 2:
-            machine.reset()
-        elif mess[0] == 3:
-            neo_status[0] = (buf[0], buf[1], buf[2])
-            neo_status.write()
-        elif mess[0] == 4:
-            global broadcast_state
-            broadcast_state = buf[0]
-            broadcast(broadcast_state)
 
-    # messages to self
-    elif mess[0] >= this_id and mess[0] <= (this_id+99):
-        this_arb = mess[0] - this_id
-        if this_arb == 1:
-            light_show()
-        elif this_arb == 2:
-            machine.reset()
-        elif this_arb == 3:
-            neo_status[0] = (buf[0], buf[1], buf[2])
-            neo_status.write()
-        elif mess[0] == 4:
-            global broadcast_state
-            broadcast_state = buf[0]
-            broadcast(broadcast_state)
+def process(id):
+    print(id)
+    if id == 1:
+        light_show()
+    elif id == 2:
+        upython.reset()
+    elif id == 3:
+        neo_status[0] = (buf[0], buf[1], buf[2])
+        neo_status.write()
+    elif id == 4:
+        global broadcast_state
+        broadcast_state = buf[0]
+        broadcast(broadcast_state)
+    elif id == 40:
+        operator._latch(buf[0])
+    elif id == 48:
+        global subscriptions
+        print('clearing subscriptions')
+        subscriptions = {}
+    elif id == 49:
+        global subscriptions
+        # add this to it's own sub list
+        sub = struct.unpack('II', buf)
+        subscriptions[sub[0]] = sub[1] # sender: receiver
+        print(sub)
 
-        elif this_arb == 90:
-            relay_1.value(buf[0])
-        elif this_arb == 91:
-            relay_2.value(buf[0])
-        elif this_arb == 92:
-            relay_3.value(buf[0])
-        elif this_arb == 93:
-            relay_4.value(buf[0])
+    elif id == 90:
+        relay_1.value(buf[0])
+    elif id == 91:
+        relay_2.value(buf[0])
+    elif id == 92:
+        relay_3.value(buf[0])
+    elif id == 93:
+        relay_4.value(buf[0])
 
-    # else:
-    #     print('unknown command')
+    else:
+        print('unknown command')
+
 
 while True:
     chk_hbt()
@@ -163,14 +221,7 @@ while True:
         broadcast(broadcast_state)
         utime.sleep_ms(200)
 
-    if button_1.value() != button_1_state:
-        button_1_state = button_1.value()
-        arb = self_broadcast + button_1_can_id
-        print('button_1 state: ' + str(button_1_state))
-        send(arb, [reverse(button_1_state)])
-
-    if button_2.value() != button_2_state:
-        button_2_state = button_2.value()
-        arb = self_broadcast + button_2_can_id
-        print('button_2 state: ' + str(button_2_state))
-        send(arb, [reverse(button_2_state)])
+    button_1.check()
+    button_2.check()
+    button_3.check()
+    button_4.check()
