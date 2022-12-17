@@ -2,4 +2,4 @@
 
 simplified 8 bit version of framework in the_upabove
 
-current latest version exists in /lego_thing directory
+every board needs /boards, main.py and the config for the specific board
