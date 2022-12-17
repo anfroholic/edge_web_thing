@@ -214,6 +214,7 @@ class GRBL:
         # self.can.send(**cmd)
 
     def reset_axis(self, axis):
+        """ reset step counter on a single axis """
         axes = {'x': self.x_reset, 'y': self.y_reset}
         axes[axis].off()
         utime.sleep_ms(1)

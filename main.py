@@ -1,45 +1,47 @@
-from machine import Pin, CAN
 import utime
+from machine import Pin, CAN, ADC
+import machine
+import config
+import uasyncio as asyncio
+from utilities import *
+
+machine.freq(240000000)
+import gc
+gc.collect()
+
+can = CanMgr(0,
+            tx=config.config['can_tx'],
+            rx=config.config['can_rx'],
+            extframe=True,
+            mode=CAN.NORMAL,
+            baudrate=250000,
+            slp_pin=config.config['can_slp']
+            )
 
 
-f_but = Pin(36, Pin.IN)
-
-can_slp = Pin(2, Pin.OUT, value=0)
-can_slp.value(0)
-
-can = CAN(0, tx=4, rx=16, extframe=True, mode=CAN.NORMAL, baudrate=250000)
-
-def led(arg: int):
-    can.send([arg], 2359317)
-
-def neo_status(arg: bytes):
-    can.send(arg, 2360157)
 
 
-def nibble(arg):
-    can.send(list(arg), 2359499)
+hbt_led = Pin(5, Pin.OUT)
 
-def big(arg):
-    buf = arg.encode() + b'\x04'
+async def do_hbt():
     while True:
-        if buf:
-            if len(buf) > 8:
-                can.send(list(buf[:8]), 2359501)
-                buf = buf[8:]
-            else:
-                can.send(list(buf), 2359501)
-                break
-        utime.sleep_ms(2)
-
-print('loaded')
+        hbt_led.value(not hbt_led.value())
+        await asyncio.sleep_ms(500)
 
 
 
-def main():
-    while True:
-        if can.any():
-            h, x, y, b = can.recv()
-            print(h,b)
-        if not f_but.value():
-            print('exiting')
-            break
+_board = __import__('boards.' + config.config['board'])
+board = getattr(_board, config.config['board'])
+
+
+
+
+
+
+
+loop = asyncio.get_event_loop()
+
+loop.create_task(do_hbt())
+loop.create_task(can.chk())
+
+loop.run_forever()
