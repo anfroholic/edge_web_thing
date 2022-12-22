@@ -78,7 +78,7 @@ def process(hdr: int, msg: bytearray):
         things[hdr%100](msg)
 
     if hdr in can.subs:
-        things[can.subs[hdr]](msg)
+        things[can.subs[hdr]%100](msg)
         
     # -------------------------------------------------
 

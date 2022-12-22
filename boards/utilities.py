@@ -217,9 +217,7 @@ class NeoMgr:
         self.neo.write()
 
     def can_fill(self, msg):
-        for p in range(self.num_pix):
-            self.neo[p] = (msg[0], msg[1], msg[2])
-        self.neo.write()
+        self.fill(msg[0], msg[1], msg[2])
 
     def chk(self):
         if self.state == 'rainbow':

@@ -150,7 +150,7 @@ class GRBL:
 
 
 
-grbl = GRBL(iris.can, uart, 5000)
+grbl = GRBL(can=iris.can, uart=uart, hbt_int=5000)
 
 
 async def hw_chk():
@@ -160,14 +160,16 @@ async def hw_chk():
         await asyncio.sleep_ms(20)
 
     # -------------------------------------------------
+    
+#  if struct.unpack('?', m)[0]
 
 this = {
     80: grbl.unlock,
     81: grbl.sleep,
     82: grbl.wake,
-    83: lambda m: grbl.home('x'),
-    84: lambda m: grbl.home('y'),
-    85: lambda m: grbl.home('z'),
+    83: lambda m: grbl.home('x') if bool(struct.unpack('b', m)[0]) else print('no homex'),
+    84: lambda m: grbl.home('y') if bool(struct.unpack('b', m)[0]) else print('no homey'),
+    85: lambda m: grbl.home('z') if bool(struct.unpack('b', m)[0]) else print('no homez'),
     86: grbl.movex,
     87: grbl.movey,
     88: grbl.movez
