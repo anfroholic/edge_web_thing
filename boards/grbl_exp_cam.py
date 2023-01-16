@@ -2,8 +2,18 @@ import config
 from boards.utilities import *
 import boards.iris as iris
 import struct
+import utime
+from machine import Pin
+import wifi_cred
 
-uart = uart1 = UartMgr(1, baudrate=115200, rx=23, tx=22)
+print('loading cam')
+cam_rst = Pin(27, Pin.OUT, Pin.PULL_UP)
+grbl_uart = UartMgr(2, baudrate=115200, rx=14, tx=21)
+cam_uart = UartMgr(1, baudrate=115200, rx=25, tx=26)
+
+cam_rst.off()
+utime.sleep_ms(100)
+cam_rst.on()
 
 class GRBL:
     def __init__(self, can, uart, hbt_int, debug=False, resets=False):
@@ -47,14 +57,14 @@ class GRBL:
             if msg == '':
                 return
 
-            if msg[0] == '<': # grbl info line
+            if msg[0] == '<':  # grbl info line
                 msg = msg.strip('<>').split('|')
                 self.status['state'] = msg[0]
                 mpos = msg[1][5:].split(',')
                 self.status['MPos']['x'] = float(mpos[0])
                 self.status['MPos']['y'] = float(mpos[1])
                 self.status['MPos']['z'] = float(mpos[2])
-                self.status['MPos']['a'] = float(mpos[3])
+                # self.status['MPos']['a'] = float(mpos[3])
                 self.status['limits'] = msg[3]
                 print(self.status_str())
                 iris.stater(self.status['state'], 50)
@@ -64,7 +74,6 @@ class GRBL:
                     if self.queue != {}:
                         self.send_c(**self.queue)
                         self.queue = {}
-
 
                     new_line = self.get_next_cmd()
                     if new_line is not None:
@@ -107,7 +116,6 @@ class GRBL:
             print(line)
             self.process(self.get_next_cmd)
 
-
     def load_buf(self, program):
         self.buf = program
         if self.debug:
@@ -147,20 +155,39 @@ class GRBL:
         self.send_g(f'G1 Z{pos} F2000')
 
 
+class Camera:
+    def __init__(self, uart):
+        self.uart = uart
+    
+    def chk(self):
+        if self.uart.any():
+            msg = self.uart.readline()
+            print(msg)        
+            if msg == 'SSID':
+                self.uart.write(wifi_cred.cred[0])
+            elif msg == 'PASSWORD':
+                self.uart.write(wifi_cred.cred[1])
+        
 
 
 
-grbl = GRBL(can=iris.can, uart=uart, hbt_int=5000)
+grbl = GRBL(can=iris.can, uart=grbl_uart, hbt_int=5000)
+cam = Camera(cam_uart)
+
 
 
 async def hw_chk():
     while True:
-        uart.chk()
+        grbl_uart.chk()
+        cam_uart.chk()
+        cam.chk()
         grbl.chk()
+        
         await asyncio.sleep_ms(20)
 
     # -------------------------------------------------
-    
+
+
 #  if struct.unpack('?', m)[0]
 
 this = {
@@ -173,5 +200,5 @@ this = {
     86: grbl.movex,
     87: grbl.movey,
     88: grbl.movez
-    }
+}
 iris.things.update(this)

@@ -1,5 +1,5 @@
 config = {
-    'board': 'grbl',
+    'board': 'grbl_1_4',
     'version': '1.4',
     'id': 200,
     'can_slp': 19,

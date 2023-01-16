@@ -1,0 +1,6 @@
+{
+  "name": "PNP Machine",
+  "axis_labels": ["x", "y", "z"],
+  "rapid": 1200,
+  "segment_length": 1
+}
