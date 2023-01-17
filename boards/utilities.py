@@ -1,6 +1,6 @@
 
 """
-version: 0.11
+version: 0.12
 7/29/22
 """
 
@@ -58,6 +58,8 @@ class CanMgr:
         self.slp.value(0)
         self.subs = {}
         self.connections = ''
+        self.ignore = []
+        self.callback = None
 
 
     async def chk(self):
@@ -66,7 +68,8 @@ class CanMgr:
                 if not self.can.any():
                     break
                 hdr, a, b, mess = self.can.recv()
-                print(hdr, mess)
+                if hdr not in self.ignore:
+                    print(hdr, mess)
                 boards.iris.process(hdr, mess)
 
             await asyncio.sleep_ms(0)
@@ -80,6 +83,10 @@ class CanMgr:
 
     def clear_subs(self, *args):
         self.subs = {}
+        
+    def create_callback(self, pid, callback):
+        self.callback = callback
+        self.subs[pid] = 69
 
     # -------------------------------------------------
 
@@ -194,6 +201,10 @@ class Servo:
     
 class NeoMgr:
     show = [(0, 33, 0), (0, 0, 33), (33, 0, 0), (0, 0, 0)]
+    green = ((0, 10, 3), (1, 25, 6))
+    blue = ((0, 3, 10), (1, 6, 25))
+    red = ((11, 0, 0), (25, 0, 6))
+    colors = (red, green, blue)
 
     rbow = tuple([int((math.sin(math.pi / 18 * i) * 127 + 128) / 10) for i in range(36)])
 
@@ -201,8 +212,11 @@ class NeoMgr:
         self.neo = NeoPixel(Pin(pin, Pin.OUT), num_pix)
         self.num_pix = num_pix
         self.fill(0,0,0)
-        self.r_idx = 0
+        self.index = 0
         self.state = 'rainbow'
+        self.chase_color = self.green
+        self.slowdown = 5  # use this to slow down the 20ms time
+        self.slowdown_count = 0
 
     def light_show(self, *args):
         for color in self.show:
@@ -222,9 +236,24 @@ class NeoMgr:
     def chk(self):
         if self.state == 'rainbow':
             self.rainbow()
+        elif self.state == 'ring_chase':
+            self.ring_chase()
 
     def rainbow(self):
         for i in range(self.num_pix):
-            self.neo[i] = (self.rbow[self.r_idx], self.rbow[(self.r_idx + 12)%36], self.rbow[(self.r_idx + 24)%36])
+            self.neo[i] = (self.rbow[self.index], self.rbow[(self.index + 12)%36], self.rbow[(self.index + 24)%36])
         self.neo.write()
-        self.r_idx = (self.r_idx + 1) % 36
+        self.index = (self.index + 1) % 36
+
+    def ring_chase(self):
+        self.slowdown_count += 1
+        self.slowdown_count = self.slowdown_count % self.slowdown
+        if not self.slowdown_count:
+            self.index += 1
+            self.index = self.index % self.num_pix
+            for i in range(self.num_pix):
+                if self.index == i:
+                    self.neo[i] = self.chase_color[1]
+                else:
+                    self.neo[i] = self.chase_color[0]
+            self.neo.write()

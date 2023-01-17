@@ -8,11 +8,70 @@ wifi.wifi_connect('Grammys_IoT', 'AAGI96475')
 connections = ''
 
 cnc_callback = None
+grbl = None
 
-def web_page():
-    global connections
+def set_broadcast(state):
+    if state:
+        iris.can.can.send([1], 4)
+        iris.broadcast_state = True
+        iris.neo_status.fill(0, 12, 3)
+    else:
+        iris.can.can.send([0], 4)
+        iris.broadcast_state = False
+        iris.neo_status.fill(0, 0, 0)
 
-    html = """
+    # -------------------------------------------------
+
+# '/close_clamp': lambda: iris.can.send(b'\x01', 1192),
+# '/open_clamp': lambda: iris.can.send(b'\x00', 1192),
+# '/home_x': lambda: iris.can.send(b'\x01', 283),
+# '/unlock': lambda: iris.can.send(b'\x01', 280)
+
+actions = {
+    '/led=on': lambda: iris.neo_status.fill(0, 25, 0),
+    '/led=off': lambda: iris.neo_status.fill(0, 0, 0),
+    '/broadcast' : lambda: set_broadcast(True),
+    '/!broadcast' : lambda: set_broadcast(False),
+    '/light_show': lambda: iris.can.can.send([1], 1)    
+    }
+
+def make_buttons():
+    html = ''
+    for button in actions.keys():
+        html += f'<a href="{button}"><button class="button button2">{button}</button></a>'
+    return html
+
+    # -------------------------------------------------
+
+def move_machine(action):
+    # example action
+    # /move_machine?x=1&y=2&z=3
+    axes = ['X', 'Y', 'Z']
+    act = {axis:act.split('=')[1] for axis, act in zip(axes, action.split('&'))}
+    line = 'G1 '
+    for axis in axes:
+        if act[axis]:
+            line += f'{axis}{act[axis]} '
+    line += 'F500'
+    print(line)
+    grbl.send_g(line)
+
+move_machine_form = """
+<p><strong>Move Machine</strong></p>
+<form action="/move_machine">
+<label for="send_arb">X:</label>
+<input type="text" id="x" name="x"><br>
+<label for="m0">Y:</label>
+<input type="text" id="y" name="y"><br>
+
+<label for="m1">Z:</label>
+<input type="text" id="z" name="z"><br>
+<input type="submit" value="Submit"></form>
+"""
+
+    # -------------------------------------------------
+
+head = """
 <html>
     <head>
         <title>Evezor Web Interface</title>
@@ -26,27 +85,17 @@ def web_page():
     <body>
     <h1>Evezor Web Interface</h1>
     <p>Connections:</p> <strong>""" + connections + """</strong>
-    <p>SD Contents:</p> <strong>""" + 'sd_files' + """</strong>
+    <p>SD Contents:</p> <strong>""" + 'sd_files' + """</strong><br><br>
+"""
 
 
-    <p><a href="/led=off"><button class="button button2">neo off</button></a>
-    <a href="/led=on"><button class="button">neo on</button></a>
-    <a href="/?mount_sd"><button class="button button4">mount sd</button></a>
-    </p>
-
+tail = """
     <p>
-    <a href="/reset"><button class="button button3">reset</button></a>
-    <a href="/light_show"><button class="button button3">light show</button></a>
-    <a href="/broadcast"><button class="button button3">broadcast</button></a>
-    <a href="/!broadcast"><button class="button button3">!broadcast</button></a>
     <a href="/auto"><button class="button button2">auto</button></a>
-    </p>
-    <a href="/close_clamp"><button class="button button3">close_clamp</button></a>
-    <a href="/open_clamp"><button class="button button3">open_clamp</button></a>
-    <a href="/home_x"><button class="button button3">home_x</button></a>
-    <a href="/unlock"><button class="button button3">unlock</button></a>
     <a href="/start_lego"><button class="button button3">start_lego</button></a>
     <a href="/test"><button class="button button3">test</button></a>
+    </p>
+
     <br><br>
     
     <div style="display: flex;">
@@ -137,7 +186,7 @@ def web_page():
     </form>
 
     </body></html>"""
-    return html
+
 
     # -------------------------------------------------
 
@@ -167,6 +216,8 @@ def parse_qs(s):
     return res
       
     # -------------------------------------------------
+
+
 
 def send_can(action):
     # example action
@@ -245,17 +296,6 @@ async def do_auto():
 
     # -------------------------------------------------
 
-actions = {
-    '/led=on': lambda: iris.neo_status.fill(0, 25, 0),
-    '/led=off': lambda: iris.neo_status.fill(0, 0, 0),
-    '/light_show': lambda: iris.can.can.send([1], 1),
-    '/close_clamp': lambda: iris.can.send(b'\x01', 1192),
-    '/open_clamp': lambda: iris.can.send(b'\x00', 1192),
-    '/home_x': lambda: iris.can.send(b'\x01', 283),
-    '/unlock': lambda: iris.can.send(b'\x01', 280)
-    }
-
-
 async def handle_client(reader, writer):
     request = (await reader.read(1024)).decode('ascii')
     # print(request)
@@ -275,6 +315,8 @@ async def handle_client(reader, writer):
         parse_string(action)
     elif request.find('/run_script') == 4:
         parse_script(action)
+    elif request.find('/move_machine') == 4:
+        move_machine(action)
 
     elif action == '/reset':
         # reset all boards
@@ -282,15 +324,6 @@ async def handle_client(reader, writer):
         connections = ''
         iris.can.can.send([1], 2)
 
-        
-    elif action == '/broadcast':
-        iris.can.can.send([1], 4)
-        iris.broadcast_state = True
-        iris.neo_status.fill(0, 12, 3)
-    elif action == '/!broadcast':
-        iris.can.can.send([0], 4)
-        iris.broadcast_state = False
-        iris.neo_status.fill(0, 0, 0)
     elif action == '/auto':
         this = asyncio.get_event_loop()
         this.create_task(do_auto())
@@ -301,21 +334,12 @@ async def handle_client(reader, writer):
         actions[action]()
 
 
-
-
-# elif action == '/demo_1':
-    #     demo_1()
-    #
-    # elif action.find('/item') == 0:
-    #     load_file(action)
-    #
-    # elif action == '/?mount_sd':
-    #     mount_sd()
-
-
     await writer.awrite(
         b'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n')
-    await writer.awrite(web_page())
+    await writer.awrite(head)
+    await writer.awrite(make_buttons())
+    await writer.awrite(move_machine_form)
+    await writer.awrite(tail)
     await writer.aclose()
     return True
 

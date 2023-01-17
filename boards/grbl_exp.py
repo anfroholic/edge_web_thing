@@ -25,18 +25,56 @@ async def hw_chk():
 
     # -------------------------------------------------
 
+def handle_encoders(msg):
+    global theta_enc_val
+    global phi_enc_val
+    
+    theta_enc_val, phi_enc_val = struct.unpack('ff', msg)
+    print('angles', theta_enc_val, phi_enc_val)
+
 import utime
 def print_gen(gen):
     print(next(gen))
     for it in gen:
         print(it)
-        utime.sleep_ms(75)
-        
+        utime.sleep_ms(30)
+
+async def reset_axis(axis):
+    if axis == 'x' or axis == 'y':
+        resets[axis].off()
+        await asyncio.sleep_ms(50)
+        resets[axis].on()
+    elif axis == 'xy':
+        resets['x'].off()
+        resets['y'].off()
+        await asyncio.sleep_ms(50)
+        resets['x'].on()
+        resets['y'].on()
+
+def offset2enc(axis):
+    if axis == 'x':
+        grbl.offset[axis] = grbl.status['MPos'][axis] - theta_enc_val 
+    if axis == 'y':
+        grbl.offset[axis] = grbl.status['MPos'][axis] - phi_enc_val
 
 
-#  if struct.unpack('?', m)[0]
+async def home_theta():
+    await reset_axis('x')
+    await asyncio.sleep_ms(500)
+    offset2enc('x')
+#     line = f'G1 X{theta_enc_val * -1} F500'
+#     print(line)
+    grbl.move({'x': 0})
+    await asyncio.sleep_ms(5000)
+    while True:
+        if grbl.status['state'] == 'Idle':
+            break
+        await asyncio.sleep_ms(20)
+    print('should be homed')
 
 this = {
+    68: handle_encoders,
+    69: iris.can.callback,
     80: grbl.unlock,
     81: grbl.sleep,
     82: grbl.wake,
@@ -48,7 +86,10 @@ this = {
     88: grbl.movez,
     89: grbl.set_hbt,
     90: lambda m: grbl.load_script(test_prog),
-    91: lambda m: grbl.load_script('test_prog.evzr')
+    91: lambda m: grbl.load_script('test_prog.evzr'),
+    92: lambda m: asyncio.get_event_loop().create_task(reset_axis('x')),
+    93: lambda m: asyncio.get_event_loop().create_task(reset_axis('x')),
+    94: lambda m: asyncio.get_event_loop().create_task(reset_axis('x'))
     }
 
 iris.things.update(this)
@@ -68,5 +109,18 @@ def run_pnp_script(script):
     # grbl.load_script(pnp.create_gen({'x': 295.5, 'y': 307.2, 'z': 0}, pos_file=script))
 
 boards.webpage.cnc_callback = run_pnp_script
+boards.webpage.grbl = grbl
 
+boards.webpage.actions.update({
+    '/unlock': grbl.unlock,
+    '/sleep': grbl.sleep,
+    '/wake': grbl.wake,
+    '/homeZ': lambda: grbl.home('Z'),
+    '/reset_x': lambda: asyncio.get_event_loop().create_task(reset_axis('x')),
+    '/reset_y': lambda: asyncio.get_event_loop().create_task(reset_axis('y')),
+    '/reset_xy': lambda: asyncio.get_event_loop().create_task(reset_axis('xy')),
+    '/home_theta': lambda: asyncio.get_event_loop().create_task(home_theta())
+    })
 
+iris.can.subs[1752] = 68
+iris.can.ignore.append(1752)

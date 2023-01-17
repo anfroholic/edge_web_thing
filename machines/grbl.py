@@ -59,6 +59,7 @@ class GRBL:
         }
         self.offset = {axis: 0 for axis in self.axes}
 
+        self.positions = {'x':0, 'y':0, 'z':0}
         self.queue = {}
         self.buf = []
         self.buf_loc = None
@@ -92,6 +93,9 @@ class GRBL:
                 self.status['MPos']['y'] = float(mpos[1])
                 self.status['MPos']['z'] = float(mpos[2])
                 # self.status['MPos']['a'] = float(mpos[3])
+                self.positions['x'] = self.status['MPos']['x'] - self.offset['x']
+                self.positions['y'] = self.status['MPos']['y'] - self.offset['y']
+                self.positions['z'] = self.status['MPos']['z'] - self.offset['z']
                 self.status['limits'] = msg[3]
                 print(self.status_str())
                 iris.stater(self.status['state'], 50)
@@ -116,9 +120,9 @@ class GRBL:
     
     def status_str(self):
         return 'State: {}, x{}, y{}, z{}, {}'.format(self.status['state'],
-                                                          round(self.status['MPos']['x'] - self.offset['x'], 3),
-                                                          round(self.status['MPos']['y'] - self.offset['y'], 3),
-                                                          round(self.status['MPos']['z'] - self.offset['z'], 3),
+                                                          self.positions['x'],
+                                                          self.positions['y'],
+                                                          self.positions['z'],
                                                           self.status['limits'])
 
     # -------------------------------------------------
@@ -210,6 +214,21 @@ class GRBL:
         pos = struct.unpack('f', msg)[0]
         self.send_g(f'G1 Z{pos} F2000')
 
+    def move(self, positions: dict):
+        line = 'G1 '
+        for axis in self.axes:
+            if axis in positions:
+                dif = self.positions[axis] - positions[axis]
+                raw = self.positions[axis] + self.offset[axis]
+                # print('dif:', dif, 'raw:', raw)
+                line += f'{axis.upper()}{raw - dif} '
+        if 'feed' in positions:
+            line += f'F{positions["feed"]}'
+        else:
+            line += 'F500'
+        # print(line)
+        self.send_g(line)
+        
     def set_hbt(self, msg):
         """
         set inerval for '?' status check to grbl
