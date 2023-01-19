@@ -54,9 +54,11 @@ async def reset_axis(axis):
 def offset2enc(axis):
     if axis == 'x':
         grbl.offset[axis] = grbl.status['MPos'][axis] - theta_enc_val 
-    if axis == 'y':
+    elif axis == 'y':
         grbl.offset[axis] = grbl.status['MPos'][axis] - phi_enc_val
-
+    elif axis == 'xy':
+        grbl.offset['y'] = grbl.status['MPos']['y'] - phi_enc_val
+        grbl.offset['x'] = grbl.status['MPos']['x'] - theta_enc_val 
 
 async def home_theta():
     await reset_axis('x')
@@ -119,7 +121,8 @@ boards.webpage.actions.update({
     '/reset_x': lambda: asyncio.get_event_loop().create_task(reset_axis('x')),
     '/reset_y': lambda: asyncio.get_event_loop().create_task(reset_axis('y')),
     '/reset_xy': lambda: asyncio.get_event_loop().create_task(reset_axis('xy')),
-    '/home_theta': lambda: asyncio.get_event_loop().create_task(home_theta())
+    '/home_theta': lambda: asyncio.get_event_loop().create_task(home_theta()),
+    '/offset2enc': lambda: offset2enc('xy')
     })
 
 iris.can.subs[1752] = 68

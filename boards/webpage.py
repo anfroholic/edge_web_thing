@@ -46,15 +46,14 @@ def make_buttons():
 def move_machine(action):
     # example action
     # /move_machine?x=1&y=2&z=3
-    axes = ['X', 'Y', 'Z']
-    act = {axis:act.split('=')[1] for axis, act in zip(axes, action.split('&'))}
-    line = 'G1 '
-    for axis in axes:
-        if act[axis]:
-            line += f'{axis}{act[axis]} '
-    line += 'F500'
-    print(line)
-    grbl.send_g(line)
+    move = {}
+    action = action.split('?')[1].split('&')
+    for act in action:
+        axis, pos = act.split('=')
+        if pos != '':
+            move[axis] = float(pos)
+    print(move)
+    grbl.move(move)
 
 move_machine_form = """
 <p><strong>Move Machine</strong></p>
@@ -68,6 +67,7 @@ move_machine_form = """
 <input type="text" id="z" name="z"><br>
 <input type="submit" value="Submit"></form>
 """
+
 
     # -------------------------------------------------
 

@@ -86,19 +86,7 @@ class GRBL:
                 return
 
             if msg[0] == '<': # grbl info line
-                msg = msg.strip('<>').split('|')
-                self.status['state'] = msg[0]
-                mpos = msg[1][5:].split(',')
-                self.status['MPos']['x'] = float(mpos[0])
-                self.status['MPos']['y'] = float(mpos[1])
-                self.status['MPos']['z'] = float(mpos[2])
-                # self.status['MPos']['a'] = float(mpos[3])
-                self.positions['x'] = self.status['MPos']['x'] - self.offset['x']
-                self.positions['y'] = self.status['MPos']['y'] - self.offset['y']
-                self.positions['z'] = self.status['MPos']['z'] - self.offset['z']
-                self.status['limits'] = msg[3]
-                print(self.status_str())
-                iris.stater(self.status['state'], 50)
+                self.parse_status(msg)
 
             elif msg == 'ok':
                 if self.state == 'run':
@@ -125,6 +113,21 @@ class GRBL:
                                                           self.positions['z'],
                                                           self.status['limits'])
 
+    def parse_status(self, msg):
+        msg = msg.strip('<>').split('|')
+        self.status['state'] = msg[0]
+        mpos = msg[1][5:].split(',')
+        self.status['MPos']['x'] = float(mpos[0])
+        self.status['MPos']['y'] = float(mpos[1])
+        self.status['MPos']['z'] = float(mpos[2])
+        # self.status['MPos']['a'] = float(mpos[3])
+        self.positions['x'] = self.status['MPos']['x'] - self.offset['x']
+        self.positions['y'] = self.status['MPos']['y'] - self.offset['y']
+        self.positions['z'] = self.status['MPos']['z'] - self.offset['z']
+        self.status['limits'] = msg[3]
+        print(self.status_str())
+        iris.stater(self.status['state'], 50)
+        
     # -------------------------------------------------
     
     def process(self, line):
@@ -214,10 +217,11 @@ class GRBL:
         pos = struct.unpack('f', msg)[0]
         self.send_g(f'G1 Z{pos} F2000')
 
+    
     def move(self, positions: dict):
         line = 'G1 '
         for axis in self.axes:
-            if axis in positions:
+            if axis in positions and positions[axis] != '':
                 dif = self.positions[axis] - positions[axis]
                 raw = self.positions[axis] + self.offset[axis]
                 # print('dif:', dif, 'raw:', raw)
