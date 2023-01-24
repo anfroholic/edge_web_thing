@@ -65,6 +65,8 @@ move_machine_form = """
 
 <label for="m1">Z:</label>
 <input type="text" id="z" name="z"><br>
+<label for="m1">Feed:</label>
+<input type="text" id="feed" name="feed"><br>
 <input type="submit" value="Submit"></form>
 """
 

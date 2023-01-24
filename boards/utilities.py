@@ -14,6 +14,7 @@ import math
 import config
 import struct
 import boards.iris
+from boards.umqtt.robust import MQTTClient
 
 this_id = config.config['id']
 
@@ -88,6 +89,25 @@ class CanMgr:
         self.callback = callback
         self.subs[pid] = 69
 
+    # -------------------------------------------------
+    
+class MqttMgr:
+    def __init__(self,client_id, server, subs: list):
+        self.client = MQTTClient(client_id, server)
+        self.client.set_callback(self.cb)
+        self.client.connect()
+        for sub in subs:
+            self.client.subscribe(sub)
+        
+    async def chk(self):
+        while True:
+            self.client.check_msg()
+            await asyncio.sleep_ms(20)
+        
+    @staticmethod
+    def cb(topic: bytearray, msg: bytearray):
+        print(topic, msg)
+    
     # -------------------------------------------------
 
 class SDMgr:

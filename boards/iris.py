@@ -6,6 +6,8 @@ import uasyncio as asyncio
 
 broadcast_state = False
 this_id = config['id']
+bus = 'mqtt'
+client = None
 
     # -------------------------------------------------
 
@@ -30,6 +32,17 @@ can = CanMgr(0,
             slp_pin=config['can_slp']
             )
 
+def mqtt_begin():
+    global client
+    client = MqttMgr(
+        client_id = config['board'],
+        server = config['mqtt_server'],
+        subs = ['#']
+        )
+    loop = asyncio.get_event_loop()
+    loop.create_task(client.chk())
+    
+
 hbt_led = Pin(config['hbt'], Pin.OUT)
 neo_status = NeoMgr(config['neo_status'], 1)
 fnc_but = Button('fnc_button', 36, False, 99, callback=fnc_chkr)
@@ -46,13 +59,18 @@ async def do_hbt():
 def button_sender(event):
     print(f'{event.name}, {event.state}, id: {event.can_id}')
     if broadcast_state:
-        can.send(struct.pack('b', event.state), event.can_id)
+        if bus == 'can':
+            can.send(struct.pack('b', event.state), event.can_id)
+        elif bus == 'mqtt':
+            client.client.publish(str(event.can_id), str(event.state))
 
     # -------------------------------------------------
     
 def stater(state: str, pid: int):
     if broadcast_state:
-        can.send(state.encode(), this_id + pid)
+        if bus == 'can':
+            can.send(state.encode(), this_id + pid)
+
 
     # -------------------------------------------------
     

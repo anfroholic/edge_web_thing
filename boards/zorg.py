@@ -7,9 +7,6 @@ import config
 import lego
 
 
-
-
-
 neo_bus = NeoMgr(27, 2)
 neo_bus.fill(0,0,0)
 
@@ -58,5 +55,6 @@ iris.things.update(this)
 
 import boards.webpage
 
-
-
+if config.config['mqtt']:
+    iris.mqtt_begin()
+    
