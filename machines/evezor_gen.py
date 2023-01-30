@@ -201,8 +201,8 @@ def drill(**kwargs):
 
 print('starting evezor')
 # setup
-import os
-print(os.listdir())
+# import os
+# print(os.listdir())
 machine = Machine(config='machine_config.json')
 move = Move(machine)
 

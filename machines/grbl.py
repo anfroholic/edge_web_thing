@@ -71,6 +71,7 @@ class GRBL:
         self.debug = debug
         self.script = None
         self.loader = Loader()
+        self.runner = None
 
     # -------------------------------------------------
     
@@ -107,24 +108,23 @@ class GRBL:
     # -------------------------------------------------
     
     def status_str(self):
-        return 'State: {}, x{}, y{}, z{}, {}'.format(self.status['state'],
-                                                          self.positions['x'],
-                                                          self.positions['y'],
-                                                          self.positions['z'],
-                                                          self.status['limits'])
+        l = [self.status['state']]
+        for axis, pos in self.positions.items():
+            l.append(f'{axis}{round(pos, 3)}')
+        l.append(self.status['limits'])
+        return ' '.join(l)
+        
 
     def parse_status(self, msg):
+        # example: <Idle|MPos:0.000,0.000,0.000|FS:0,0>
         msg = msg.strip('<>').split('|')
         self.status['state'] = msg[0]
         mpos = msg[1][5:].split(',')
-        self.status['MPos']['x'] = float(mpos[0])
-        self.status['MPos']['y'] = float(mpos[1])
-        self.status['MPos']['z'] = float(mpos[2])
-        # self.status['MPos']['a'] = float(mpos[3])
-        self.positions['x'] = self.status['MPos']['x'] - self.offset['x']
-        self.positions['y'] = self.status['MPos']['y'] - self.offset['y']
-        self.positions['z'] = self.status['MPos']['z'] - self.offset['z']
-        self.status['limits'] = msg[3]
+        for i, axis in enumerate(self.axes):
+            self.status['MPos'][axis] = float(mpos[i])
+            self.positions[axis] = self.status['MPos'][axis] - self.offset[axis]
+        
+        # self.status['limits'] = msg[3]
         print(self.status_str())
         iris.stater(self.status['state'], 50)
         
@@ -175,6 +175,10 @@ class GRBL:
         try:
             return next(self.script)
         except StopIteration:
+            print('grbl job complete')
+            if self.runner:
+                self.runner(True)
+                self.runner = None
             return None
 
     # -------------------------------------------------
@@ -239,8 +243,9 @@ class GRBL:
         """
         self.hbt_int = struct.unpack('B', msg)[0] * 100
 
-    def load_script(self, script):
+    def load_script(self, script, runner=None, **kwargs):
         print('loading', script)
+        self.runner = runner
         self.script = self.loader(script)
         self.state = 'run'
         self.process(self.get_next_cmd())

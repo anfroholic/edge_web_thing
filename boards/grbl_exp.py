@@ -4,15 +4,18 @@ import boards.iris as iris
 import struct
 from machines.grbl import GRBL
 from machine import Pin
+from machines.runner import Runner
 
 uart = uart1 = UartMgr(1, baudrate=115200, rx=14, tx=21)
 
-grbl = GRBL(can=iris.can, uart=uart, axes = ['x','y','z'], hbt_int=5000)
+grbl = GRBL(can=iris.can, uart=uart, axes = ('x','y','z'), hbt_int=5000)
 
 reset_pins = {"x":25, "y":26, "z":27}
 
     
 resets = {axis: Pin(pin, Pin.OUT) for axis, pin in reset_pins.items()}
+
+runner = Runner('runner', subs=iris.can.subs)
 
 for pin in resets.values():
     pin.on()
@@ -76,7 +79,7 @@ async def home_theta():
 
 this = {
     68: handle_encoders,
-    69: iris.can.callback,
+    69: runner,
     80: grbl.unlock,
     81: grbl.sleep,
     82: grbl.wake,
@@ -90,8 +93,8 @@ this = {
     90: lambda m: grbl.load_script(test_prog),
     91: lambda m: grbl.load_script('test_prog.evzr'),
     92: lambda m: asyncio.get_event_loop().create_task(reset_axis('x')),
-    93: lambda m: asyncio.get_event_loop().create_task(reset_axis('x')),
-    94: lambda m: asyncio.get_event_loop().create_task(reset_axis('x'))
+    93: lambda m: asyncio.get_event_loop().create_task(reset_axis('y')),
+    94: lambda m: asyncio.get_event_loop().create_task(reset_axis('z'))
     }
 
 iris.things.update(this)
@@ -113,6 +116,39 @@ def run_pnp_script(script):
 boards.webpage.cnc_callback = run_pnp_script
 boards.webpage.grbl = grbl
 
+def callback_thing(kwarg):
+    print(kwarg)
+    
+
+
+def start_runner(script):
+    runner.load_script(script)
+    next(runner)
+
+runner_test = [
+    {'cmd': 'message1'},
+    {'cmd': 'callback', 'callback': lambda m: not bool(struct.unpack('b', m)[0]), 'pid': 951},
+    {'cmd': 'message2'},
+    {'cmd': grbl.load_script, 'script': 'test_prog.evzr', 'runner': runner, 'callback': lambda m: m},
+    {'cmd': 'message3'},
+    {'cmd': 'callback', 'callback': lambda m: bool(struct.unpack('b', m)[0]), 'pid': 951},
+    {'cmd': 'message4'},
+    {'cmd': callback_thing, 'kwarg': "it's the thing"},
+    {'cmd': 'message5'}
+    ]
+
+def run_gen():
+    yield {'cmd': 'message1'}
+    yield {'cmd': 'message2'}
+    yield {'cmd': 'message3'}
+    yield {'cmd': 'message4'}
+    yield from runner_test
+    yield {'cmd': 'the things completed now'}
+    
+
+
+
+
 boards.webpage.actions.update({
     '/unlock': grbl.unlock,
     '/sleep': grbl.sleep,
@@ -122,7 +158,9 @@ boards.webpage.actions.update({
     '/reset_y': lambda: asyncio.get_event_loop().create_task(reset_axis('y')),
     '/reset_xy': lambda: asyncio.get_event_loop().create_task(reset_axis('xy')),
     '/home_theta': lambda: asyncio.get_event_loop().create_task(home_theta()),
-    '/offset2enc': lambda: offset2enc('xy')
+    '/offset2enc': lambda: offset2enc('xy'),
+    '/test_prog': lambda: grbl.load_script('test_prog.evzr'),
+    '/test_runner': lambda: start_runner(run_gen)    
     })
 
 iris.can.subs[1752] = 68
