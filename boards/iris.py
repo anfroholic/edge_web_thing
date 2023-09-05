@@ -6,7 +6,12 @@ import uasyncio as asyncio
 
 broadcast_state = False
 this_id = config['id']
-bus = 'mqtt'
+
+bus = 'can'
+if 'mqtt' in config:
+    if config['mqtt']:
+        bus = 'mqtt'
+        print('mqtt enabled')
 client = None
 
     # -------------------------------------------------
@@ -62,7 +67,11 @@ def button_sender(event):
         if bus == 'can':
             can.send(struct.pack('b', event.state), event.can_id)
         elif bus == 'mqtt':
-            client.client.publish(str(event.can_id), str(event.state))
+            if event.state:
+                state = b'\x01'
+            else:
+                state = b'\x00'
+            client.client.publish(str(event.can_id), state, qos=1)
 
     # -------------------------------------------------
     
@@ -92,11 +101,15 @@ async def fnc_chk():
     # -------------------------------------------------
 
 def process(hdr: int, msg: bytearray):
+    
     if hdr < 100 or (hdr >= this_id and hdr <= (this_id+99)):
         things[hdr%100](msg)
 
     if hdr in can.subs:
         things[can.subs[hdr]%100](msg)
+        
+def add_sub(pub_pid, sub_pid):
+    can.subs[pub_pid] = sub_pid
         
     # -------------------------------------------------
 

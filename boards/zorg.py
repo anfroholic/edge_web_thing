@@ -53,8 +53,53 @@ iris.things.update(this)
 
     # -------------------------------------------------
 
+def opener(filename):
+    with open(filename, 'rb') as f:
+        while True:
+            seg = f.read(8)
+            if not seg:
+                break
+            yield seg
+        
+
+async def sender(filename):
+    print('starting')
+    segger = opener(filename)
+    while True:
+        if not iris.can.can.info()['msgs_to_tx']:
+            try:
+                seg = next(segger)
+                iris.can.send(seg, 38)
+                # print(seg)
+            except StopIteration:
+                print('done')
+                break
+        else:
+            print('waiting')
+        await asyncio.sleep_ms(0)
+
+def start_sender(filename):
+    print('making sender')
+    loop = asyncio.get_event_loop()
+    loop.create_task(sender(filename))
+
 import boards.webpage
 
 if config.config['mqtt']:
     iris.mqtt_begin()
+    iris.add_sub(150, 190)
+    iris.add_sub(151, 191)
+    iris.add_sub(152, 192)
+    iris.add_sub(153, 193)
+    
+boards.webpage.actions.update({
+    '/lego': lambda: start_sender('lego.py'),
+    '/grbl': lambda: start_sender('GRBL_5x-top-pos.csv'),
+    '/json': lambda: start_sender('manifest.json'),
+    '/printit': lambda: iris.can.send(b'1', 39),
+    '/clear': lambda: iris.can.send(b'1', 37)    
+    })
+
+
+
     

@@ -1,0 +1,721 @@
+{
+"board":{
+  "reset": {
+    "p_type": "reset",
+    "pid": 0
+  },
+  "can": {
+    "pid": 500,
+    "state": false,
+    "p_type": "CAN",
+    "d_type": [
+      "frame",
+      "e"
+    ],
+    "blob": 9,
+    "rx": 16,
+    "tx": 4,
+    "baud": 1000000,
+    "extframe": true,
+    "bus": 0,
+    "rx_queue": 25,
+    "sub_params": {
+      "can_slp": {
+        "pin": 2,
+        "pid": 501,
+        "state": false,
+        "p_type": "DigitalOutput",
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "blob": 7,
+        "sub_params": {
+          "invert": {
+            "state": false,
+            "p_type": "Variable",
+            "pid": 502,
+            "d_type": [
+              "bool",
+              "?"
+            ],
+            "blob": 7
+          }
+        }
+      }
+    }
+  },
+  "uart": {
+    "pid": 505,
+    "state": null,
+    "blob": 9,
+    "uart": 1,
+    "tx": 32,
+    "rx": 35,
+    "baud": 115200,
+    "encode": "utf8",
+    "p_type": "UART",
+    "d_type": [
+      "buf",
+      "e"
+    ]
+  },
+  "loader": {
+    "pid":  7048,
+    "p_type": "Loader"
+  },
+  "led_a": {
+    "pin": 33,
+    "pid": 10,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 9,
+    "sub_params": {
+      "invert": {
+        "state": false,
+        "p_type": "Variable",
+        "pid": 11,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "blob": 9
+      }
+    }
+  },
+  "led_b": {
+    "pin": 25,
+    "pid": 25,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 9,
+    "sub_params": {
+      "invert": {
+        "state": false,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "p_type": "Variable",
+        "pid": 21,
+        "blob": 7
+      }
+    }
+  },
+  "led_c": {
+    "pin": 21,
+    "pid": 28,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 9,
+    "sub_params": {
+      "invert": {
+        "state": false,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "p_type": "Variable",
+        "pid": 29,
+        "blob": 7
+      }
+    }
+  },
+  "hbt_led": {
+    "pin": 15,
+    "pid": 13,
+    "state": false,
+    "p_type": "DigitalOutput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 1,
+    "invert": false
+  },
+  "pwm_a": {
+    "pin": 22,
+    "pid": 30,
+    "state": true,
+    "p_type": "PWM",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 7,
+    "sub_params": {
+      "duty": {
+        "state": 0,
+        "d_type": [
+          "range",
+          "H"
+        ],
+        "p_type": "Variable",
+        "poke": 30,
+        "pid": 31,
+        "blob": 1,
+        "sub_params": {
+          "low": {
+            "state": 0,
+            "d_type": [
+              "var",
+              "H"
+            ],
+            "p_type": "Variable",
+            "pid": 32,
+            "bundle": [
+              "?",
+              100320
+            ],
+            "blob": 7
+          },
+          "high": {
+            "state": 1023,
+            "d_type": [
+              "var",
+              "H"
+            ],
+            "p_type": "Variable",
+            "pid": 33,
+            "bundle": [
+              "?",
+              100330
+            ],
+            "blob": 7
+          }
+        }
+      },
+      "freq": {
+        "state": 1000,
+        "d_type": [
+          "range",
+          "H"
+        ],
+        "p_type": "Variable",
+        "poke": 30,
+        "pid": 34,
+        "bundle": [
+          "?",
+          100340
+        ],
+        "blob": 7,
+        "sub_params": {
+          "low": {
+            "state": 0,
+            "d_type": [
+              "var",
+              "H"
+            ],
+            "p_type": "Variable",
+            "pid": 35,
+            "bundle": [
+              "?",
+              100350
+            ],
+            "blob": 7
+          },
+          "high": {
+            "state": 1023,
+            "d_type": [
+              "var",
+              "H"
+            ],
+            "p_type": "Variable",
+            "pid": 36,
+            "bundle": [
+              "?",
+              100360
+            ],
+            "blob": 7
+          }
+        }
+      },
+      "invert": {
+        "state": false,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "p_type": "Variable",
+        "pid": 37,
+        "bundle": [
+          "?",
+          100370
+        ],
+        "blob": 7
+      }
+    }
+  },
+  "input_a": {
+    "pin": 34,
+    "pid": 40,
+    "state": false,
+    "p_type": "DigitalInput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 27,
+    "invert": true,
+    "sub_params": {
+      "debounce": {
+        "state": 32,
+        "d_type": [
+          "var",
+          "H"
+        ],
+        "p_type": "Variable",
+        "pid": 42,
+        "blob": 7
+      }
+    }
+  },
+  "input_b": {
+    "pin": 26,
+    "pid": 45,
+    "state": false,
+    "p_type": "DigitalInput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 27,
+    "pull": "up",
+    "sub_params": {
+      "invert": {
+        "state": true,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "p_type": "Variable",
+        "pid": 46,
+        "blob": 7
+      },
+      "debounce": {
+        "state": 32,
+        "d_type": [
+          "var",
+          "H"
+        ],
+        "p_type": "Variable",
+        "pid": 47,
+        "blob": 7
+      }
+    }
+  },
+  "input_c": {
+    "pin": 14,
+    "pid": 50,
+    "state": false,
+    "p_type": "DigitalInput",
+    "d_type": [
+      "bool",
+      "?"
+    ],
+    "blob": 27,
+    "pull": "up",
+    "sub_params": {
+      "invert": {
+        "state": true,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "p_type": "Variable",
+        "pid": 51,
+        "blob": 7
+      },
+      "debounce": {
+        "state": 32,
+        "d_type": [
+          "var",
+          "H"
+        ],
+        "p_type": "Variable",
+        "pid": 52,
+        "blob": 7
+      }
+    }
+  },
+  "operator": {
+    "pid": 100,
+    "state": null,
+    "p_type": "Operator",
+    "code": "self.p[33].state + self.p[34].state",
+    "d_type": [
+      "int",
+      "H"
+    ],
+    "blob": 7,
+    "sub_params": {}
+  },
+  "nibble_op": {
+    "pid": 101,
+    "state": null,
+    "p_type": "Operator",
+    "code": "print(arg)",
+    "d_type": [
+      "nibble",
+      "u"
+    ],
+    "blob": 1,
+    "sub_params": {}
+  },
+  "str_buf": {
+    "pid": 102,
+    "state": null,
+    "p_type": "StrBuf",
+    "encode": "utf8",
+    "d_type": [
+      "strbuf",
+      "e"
+    ],
+    "blob": 25,
+    "sub_params": {}
+  },
+  "switch": {
+    "pid": 120,
+    "state": null,
+    "p_type": "Switch",
+    "d_type": [
+      "switch",
+      "B"
+    ],
+    "items": [[10, false], [10, true], [[25, false], [10, false]]],
+    "names": ["off", "green", "yellow", "red", "blue"],
+    "blob": 25
+  },
+  "greater_than": {
+    "pid": 130,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "int",
+      "b"
+    ],
+    "operator": ">",
+    "blob": 13
+  },
+  "divide": {
+    "pid": 140,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "float",
+      "f"
+    ],
+    "operator": "/",
+    "blob": 13
+  },
+  "add": {
+    "pid": 150,
+    "state": null,
+    "p_type": "Basic",
+    "input_a": 33,
+    "input_b": 52,
+    "d_type": [
+      "int",
+      "H"
+    ],
+    "operator": "+",
+    "blob": 3
+  },
+  "truth": {
+    "pid": 160,
+    "state": null,
+    "p_type": "Branch",
+    "true_hot": [13, false],
+    "false_hot": [13, true],
+    "d_type": [
+      "bool",
+      "b"
+    ],
+    "blob": 25
+  },
+  "timer_hb_on": {
+    "p_type": "Timer",
+    "pid": 180
+  },
+  "timer1": {
+    "p_type": "Timer",
+    "pid": 181,
+    "blob": 41
+  },
+  "timer2": {
+    "p_type": "Timer",
+    "pid": 182,
+    "blob": 105
+  },
+  "timer3": {
+    "p_type": "Timer",
+    "pid": 183
+  },
+  "blobber": {
+    "pid": 8108,
+    "p_type": "Blobber",
+    "adr": 10,
+    "len": 27,
+    "d_type": [
+      "complex",
+      "Q"
+    ]
+  },
+  "blob_test": {
+        "state": false,
+        "p_type": "Variable",
+        "pid": 55,
+        "d_type": [
+          "bool",
+          "?"
+        ],
+        "blob": 7
+      },
+  "read": {
+    "pid": 8109,
+    "p_type": "Read",
+    "len_pid": 18,
+    "d_type": [
+      "complex",
+      "Q"
+    ]
+  },
+  "neo_status": {
+    "pin": 17,
+    "pid": 430,
+    "state": 0,
+    "p_type": "Neo",
+    "blob": 7,
+    "num_pixels": 1,
+    "d_type": [
+      "bytearray(3)",
+      "e"
+    ]
+  },
+  "neo_bus": {
+    "pin": 27,
+    "pid": 431,
+    "state": 0,
+    "p_type": "Neo",
+    "blob": 1,
+    "num_pixels": 2,
+    "d_type": [
+      "bytearray(6)",
+      "e"
+    ]
+  },
+  "sd": {
+    "pid": 580,
+    "slot": 2,
+    "p_type": "SDCard"
+  },
+  "stripe": {
+    "pid": 1000,
+    "len": 3,
+    "p_type": "Stripe",
+    "encode": "u",
+    "blob": 9
+  },
+  "stripe2": {
+    "pid": 1001,
+    "len": 3,
+    "p_type": "Stripe",
+    "encode": "u",
+    "blob": 9
+  },
+  "striper": {
+    "pid": 6999,
+    "head": 7005,
+    "stripe": [7000, 7001, 7002, 7003, 7004],
+    "blob": 1,
+    "p_type": "Striper"
+  },
+  "stringer": {
+    "pid": 5555,
+    "p_type": "Stringer"
+  },
+  "grbl": {
+    "pid": 6781,
+    "p_type": "GRBL",
+    "state": "idle",
+    "d_type": [
+      "nibble",
+      "u"
+    ],
+    "blob": 7,
+    "sd": 580,
+    "uart": 505,
+    "loader": 7048,
+    "hbt_interval": 500,
+    "status": {
+      "state": "sleep",
+      "MPos": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "a": 0
+      },
+      "limits": ""
+    },
+    "functions": {
+      "home_x":  {
+        "pid": 6000,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home_y":  {
+        "pid": 6001,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home_z":  {
+        "pid": 6002,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home_a":  {
+        "pid": 6003,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home_b":  {
+        "pid": 6004,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home_c":  {
+        "pid": 6005,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "home":  {
+        "pid": 6006,
+        "d_type": [
+          "buf",
+          "u"
+        ]
+      },
+      "unlock": {
+        "pid": 6007,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "sleep": {
+        "pid": 6008,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "get_status": {
+        "pid": 6009,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "wake": {
+        "pid": 6010,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "feed_hold": {
+        "pid": 6011,
+        "d_type": [
+          null,
+          null
+        ]
+      },
+      "send_line": {
+        "pid": 6012,
+        "d_type": [
+          "str",
+          "u"
+        ]
+      },
+      "run": {
+        "pid": 6013,
+        "d_type": [
+          "str",
+          "u"
+        ]
+      }
+    },
+    "sub_params": {
+      "send_line": {
+        "pid": 6013,
+        "state": null,
+        "p_type": "StrBuf",
+        "encode": "utf8",
+        "d_type": [
+          "strbuf",
+          "u"
+        ],
+        "blob": 1,
+        "hot": 6012
+      }
+    }
+  }
+},
+  "subs": {},
+  "_subs": {
+    "100": [0, "e"],
+    "200": [[10, 25], "?"],
+    "9999300": [[1000, 1001], "e", 0],
+    "9999302": [[1000, 1001], "e", 1],
+    "9999304": [[1000, 1001], "e", 2]
+
+  },
+  "self_subs": {
+    "180": ["Functor", 10, false]
+  },
+  "hots": {
+    "40": 10,
+    "45": 10,
+    "50": 28,
+    "102": 101
+  },
+  "partial": {
+    "180": [[160, 13], [180, 1000]],
+    "181": [[13, false], [180, 1000]],
+    "182": [13, true],
+    "183": [13, false]
+  },
+  "alias": {
+    "182": [180, 34]
+  }
+}
+
+
