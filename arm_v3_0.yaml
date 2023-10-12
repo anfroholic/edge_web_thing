@@ -1,5 +1,5 @@
-board: GRBLTEST1
-name: ANFROARM_V3
+board: arm_v3_0
+name: EvezorARM_V3_0
 
 start:
   must_home: false
@@ -65,7 +65,7 @@ axes:
       pulloff_mm: 1.000
       standard_stepper:
         step_pin: gpio.5
-        direction_pin: gpio.19
+        direction_pin: gpio.19:low
         disable_pin: gpio.18
   z:
     steps_per_mm: 1280.0
