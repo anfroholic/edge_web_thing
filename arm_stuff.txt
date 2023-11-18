@@ -1,0 +1,35 @@
+$Config/Filename=alpha_arm.yaml
+
+phi_adr: 505330240
+theta_adr: 471790368
+
+10: 
+  phi:438 
+  theta:-847
+9: 
+  phi: 780
+  theta:7939 
+8: 
+  phi: -4495
+  theta: -6832
+7: 
+  phi: 3119
+  theta: 3063
+6: 
+  phi: 4707
+  theta: -7278
+5: 
+  phi: -2465
+  theta: -7877
+4: 
+  phi: 10
+  theta: -5102  
+3: 
+  phi: -2497
+  theta: 787
+2: 
+  phi: -1636
+  theta: 6620
+1: 
+  phi: 7806
+  theta: 5771

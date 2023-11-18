@@ -1,5 +1,5 @@
-board: GRBLTEST1
-name: ANFROTESTXYZ
+board: 3_AXIS_CNC_EXPANSION_1.0
+name: Alpha_arm_v1.0
 
 start:
   must_home: false
