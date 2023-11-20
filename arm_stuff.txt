@@ -6,30 +6,50 @@ theta_adr: 471790368
 10: 
   phi:438 
   theta:-847
+  id: b'\x10R\x1cP\xbd\x00'
+  arm_id: b'\x10R\x1cP\xba\xec'
 9: 
   phi: 780
   theta:7939 
+  id: b'\x10R\x1cP\xbb\xdc'
+  arm_id: b'\x10R\x1cP\xba\xfc'
 8: 
   phi: -4495
   theta: -6832
+  id: b'\x10R\x1cP\xc9@'
+  arm_id: b'\x10R\x1cP\xbb\x18'
 7: 
   phi: 3119
   theta: 3063
+  id: b'\xa8\x03*s}\xbc'
+  arm_id: b'\x10R\x1cP\xba\xc4'
 6: 
   phi: 4707
   theta: -7278
+  id: b'\x10R\x1cP\xbc\x1c'
+  arm_id: b'\x10R\x1cP\xbd$'
 5: 
   phi: -2465
-  theta: -7877
+  theta: -7851
+  id: b'\x10R\x1cP\xbc\xe8'
+  arm_id: b'\x10R\x1cP\xbc\x14'
 4: 
   phi: 10
   theta: -5102  
+  id: b'\x10R\x1cP\xbc,'
+  arm_id: b'\x10R\x1cP\xbb\x8c'
 3: 
   phi: -2497
   theta: 787
+  id: b'\x10R\x1cP\xbb\xe0'
+  arm_id: b'\x10R\x1cP\xbb\x80'
 2: 
   phi: -1636
   theta: 6620
+  id: b'\x10R\x1cP\xc1H'
+  arm_id: b'\x10R\x1cP\xba\xdc'
 1: 
   phi: 7806
   theta: 5771
+  id: b'\x10R\x1cP\x9a '
+  arm_id: b'\x10R\x1cP\xba\xb0'
